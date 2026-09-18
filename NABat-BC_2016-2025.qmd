@@ -154,7 +154,7 @@ transect_covariates<- transect_covariates %>%
 #| eval: true
 #| warning: false
 #| message: false
-#| 
+#|
 # ── 1. Species cols ────────────────────────────────────────────────────────────
 sp_cols <- c("ANPA","COTO","EPFU","EUMA","LABO","LACI","LANO",
              "MYCA","MYCI","MYEV","MYLU","MYSE","MYTH","MYVO","MYYU",
@@ -171,7 +171,7 @@ sp_colors <- c(
 )
 
 # ── 4. SVG pie helper ──────────────────────────────────────────────────────────
-make_pie_svg <- function(values, colors, size = 70) {
+make_pie_svg <- function(values, colors, size = 96) {
   total <- sum(values)
   if (total == 0) return(NULL)
   fracs  <- values / total
@@ -201,14 +201,14 @@ make_sp_table <- function(sp_df, pie_colors) {
     arrange(desc(n)) %>%
     mutate(pct = round(n / sum(n) * 100, 1)) %>%
     purrr::pmap_chr(function(species, n, pct) sprintf(
-      '<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:50%%;background:%s;margin-right:4px"></span>%s</td><td align="right">%s</td><td align="right">%s%%</td></tr>',
+      '<tr><td style="padding-right:8px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%%;background:%s;margin-right:4px"></span>%s</td><td align="right" style="padding-right:6px">%s</td><td align="right">%s%%</td></tr>',
       ifelse(species %in% names(pie_colors), pie_colors[species], "#AAAAAA"),
-      species, n, pct
+      species, format(n, big.mark = ","), pct
     )) %>%
     paste(collapse = "")
 }
 
-# ── 6. Collapse to top-5 + Other for pie ──────────────────────────────────────
+# ── 6. (collapse_pie kept for reference; no longer used in popups) ──────────────
 collapse_pie <- function(sp_df) {
   top5 <- sp_df$species[order(sp_df$n, decreasing = TRUE)][1:min(5, nrow(sp_df))]
   sp_df %>%
@@ -237,7 +237,7 @@ site_list <- sites_2025 %>%
 
 # ── 8. Draw map ────────────────────────────────────────────────────────────────
 m <- leaflet() %>%
-  addProviderTiles(providers$CartoDB.Positron)
+  addProviderTiles(providers$Esri.WorldGrayCanvas)
 
 all_pie_colors <- c()
 
@@ -245,118 +245,73 @@ for (i in seq_len(nrow(site_list))) {
   row   <- site_list[i, ]
   sp    <- row$sp_data[[1]]
   years <- row$years[[1]]
-
-  uid <- gsub("[^a-zA-Z0-9]", "_", row$site_name)
-
-  # -- Determine pie year: 2025 if available, else nearest prior year ----------
-  has_2025 <- any(sp$year == 2025, na.rm = TRUE)
-  if (has_2025) {
-    pie_year     <- 2025L
-    pie_year_lbl <- "2025"
-  } else if (length(years) > 0) {
-    pie_year     <- max(years, na.rm = TRUE)
-    pie_year_lbl <- paste0(pie_year, " (most recent)")
-  } else {
-    next  # no data at all, skip
-  }
-
-  sp_for_pie <- sp %>%
-    filter(year == pie_year) %>%
-    group_by(species) %>%
-    summarise(n = sum(n), .groups = "drop")
-
-  if (nrow(sp_for_pie) == 0 || sum(sp_for_pie$n) == 0) next
-
-  sp_pie <- collapse_pie(sp_for_pie)
-
-  unknown_sp    <- setdiff(sp_pie$species, names(sp_colors))
-  fallback_cols <- setNames(
-    colorRampPalette(brewer.pal(8, "Dark2"))(max(length(unknown_sp), 1)),
-    unknown_sp)
-  pie_colors <- setNames(
-    c(sp_colors, fallback_cols)[sp_pie$species],
-    sp_pie$species)
-
-  # Colours for table (all species, no collapsing)
-  all_sp       <- unique(sp$species)
-  unknown_all  <- setdiff(all_sp, names(sp_colors))
-  fallback_all <- setNames(
-    colorRampPalette(brewer.pal(8, "Dark2"))(max(length(unknown_all), 1)),
-    unknown_all)
-  all_colors <- c(sp_colors, fallback_all)
-
-  all_pie_colors <- c(all_pie_colors, pie_colors)
-
-  uri <- make_pie_svg(sp_pie$n, pie_colors[sp_pie$species])
-
-  # -- All-years table ---------------------------------------------------------
-  sp_all_table <- sp %>%
-    group_by(species) %>%
-    summarise(n = sum(n), .groups = "drop")
-
-  all_table_html <- paste0(
-    '<tr><th align="left">Species</th><th align="right">n</th><th align="right">%</th></tr>',
-    make_sp_table(sp_all_table, all_colors)
-  )
-
-  # -- Year buttons + per-year tables ------------------------------------------
-  year_button_list <- c(
+  
+  # Skip sites with no detections at all
+  if (is.null(sp) || nrow(sp) == 0 || sum(sp$n, na.rm = TRUE) == 0) next
+  
+  # -- Build one pie + species table per year (most recent first) --------------
+  year_blocks <- purrr::map_chr(sort(years, decreasing = TRUE), function(yr) {
+    sp_yr <- sp %>%
+      filter(year == yr) %>%
+      group_by(species) %>%
+      summarise(n = sum(n), .groups = "drop") %>%
+      arrange(desc(n))
+    
+    if (nrow(sp_yr) == 0 || sum(sp_yr$n) == 0) return("")
+    
+    yr_total <- sum(sp_yr$n)
+    
+    # Colours: known palette + fallback for anything unmapped
+    yr_species <- sp_yr$species
+    unknown    <- setdiff(yr_species, names(sp_colors))
+    fallback   <- setNames(
+      colorRampPalette(brewer.pal(8, "Dark2"))(max(length(unknown), 1)),
+      unknown)
+    yr_colors  <- c(sp_colors, fallback)
+    
+    # Accumulate for the map-level legend (section 9)
+    all_pie_colors <<- c(all_pie_colors, yr_colors[yr_species])
+    
+    uri         <- make_pie_svg(sp_yr$n, yr_colors[yr_species], size = 96)
+    legend_rows <- make_sp_table(sp_yr, yr_colors)
+    
     sprintf(
-      '<button onclick="(function(b){var uid=\'%s\';var rows=b.getAttribute(\'data-rows\');var tot=b.getAttribute(\'data-tot\');document.getElementById(\'tbl_\'+uid).innerHTML=rows;document.getElementById(\'lbl_\'+uid).innerHTML=\'All years &mdash; \'+tot+\' detections\';[].forEach.call(document.querySelectorAll(\'[data-uid%s]\'),function(x){x.style.background=\'#e0e0e0\';x.style.color=\'#333\'});b.style.background=\'#4E79A7\';b.style.color=\'white\';})(this)" data-uid%s="1" data-tot="%s" data-rows="%s" id="btn_%s_all" style="margin:2px;padding:3px 8px;border:1px solid #ccc;border-radius:4px;background:#4E79A7;color:white;cursor:pointer;font-size:11px;">All</button>',
-      uid, uid, uid, row$total,
-      htmltools::htmlEscape(all_table_html, attribute = TRUE),
-      uid
-    ),
-    purrr::map_chr(years, function(yr) {
-      sp_yr <- sp %>%
-        filter(year == yr) %>%
-        group_by(species) %>%
-        summarise(n = sum(n), .groups = "drop")
-      yr_total <- sum(sp_yr$n)
-      yr_table_html <- paste0(
-        '<tr><th align="left">Species</th><th align="right">n</th><th align="right">%</th></tr>',
-        make_sp_table(sp_yr, all_colors)
-      )
-      sprintf(
-        '<button onclick="(function(b){var uid=\'%s\';var rows=b.getAttribute(\'data-rows\');var tot=b.getAttribute(\'data-tot\');var yr=b.getAttribute(\'data-yr\');document.getElementById(\'tbl_\'+uid).innerHTML=rows;document.getElementById(\'lbl_\'+uid).innerHTML=yr+\' &mdash; \'+tot+\' detections\';[].forEach.call(document.querySelectorAll(\'[data-uid%s]\'),function(x){x.style.background=\'#e0e0e0\';x.style.color=\'#333\'});b.style.background=\'#4E79A7\';b.style.color=\'white\';})(this)" data-uid%s="1" data-yr="%s" data-tot="%s" data-rows="%s" id="btn_%s_%s" style="margin:2px;padding:3px 8px;border:1px solid #ccc;border-radius:4px;background:#e0e0e0;color:#333;cursor:pointer;font-size:11px;">%s</button>',
-        uid, uid, uid, yr, yr_total,
-        htmltools::htmlEscape(yr_table_html, attribute = TRUE),
-        uid, yr, yr
-      )
-    })
-  ) %>% paste(collapse = "")
-
-  # -- Full popup --------------------------------------------------------------
-  n_species   <- nrow(sp_all_table)
-  table_style <- if (n_species > 15) {
-    'style="width:100%;margin-top:4px;display:block;max-height:250px;overflow-y:auto;"'
-  } else {
-    'style="width:100%;margin-top:4px;"'
-  }
-
- popup <- sprintf(
-    '<div style="font-family:sans-serif;min-width:220px;max-width:300px">
-  <b>%s</b>
-  <div style="font-size:11px;color:#777;margin-bottom:4px;">Pie shows: %s</div>
-  <hr style="margin:5px 0"/>
-  <div style="margin-bottom:6px">%s</div>
-  <b id="lbl_%s">All years &mdash; %s detections</b>
-  <table id="tbl_%s" %s>%s</table>
-</div>',
-    row$site_name,
-    pie_year_lbl,
-    year_button_list,
-    uid, row$total,
-    uid, table_style,
-    all_table_html
+      '<div style="margin-bottom:14px;">
+         <div style="font-weight:600;font-size:13px;margin-bottom:6px;color:#333;">%s</div>
+         <div style="display:flex;align-items:flex-start;gap:12px;">
+           <img src="%s" width="96" height="96" style="flex-shrink:0;"/>
+           <table style="font-size:11px;border-collapse:collapse;">
+             <tr><th align="left" style="padding-right:8px">Species</th><th align="right" style="padding-right:6px">n</th><th align="right">%%</th></tr>
+             %s
+           </table>
+         </div>
+         <div style="font-weight:600;font-size:12px;margin-top:4px;color:#333;">Total bats: %s</div>
+       </div>',
+      yr, uri, legend_rows, format(yr_total, big.mark = ",")
+    )
+  }) %>% paste(collapse = "")
+  
+  # -- Popup: stacked yearly pies ----------------------------------------------
+  popup <- sprintf(
+    '<div style="font-family:sans-serif;min-width:270px;max-width:340px;max-height:420px;overflow-y:auto;">
+       <b style="font-size:14px;">%s</b>
+       <hr style="margin:6px 0"/>
+       %s
+     </div>',
+    row$site_name, year_blocks
   )
-
-  m <- m %>% addMarkers(
-    lng   = row$Long, lat = row$Lat,
-    icon  = makeIcon(iconUrl = uri, iconWidth = 70, iconHeight = 70,
-                     iconAnchorX = 35, iconAnchorY = 35),
-    popup = popup,
-    label = row$site_name
+  
+  # -- Blue dot marker ---------------------------------------------------------
+  m <- m %>% addCircleMarkers(
+    lng         = row$Long, lat = row$Lat,
+    radius      = 6,
+    stroke      = TRUE,
+    color       = "#ffffff",
+    weight      = 1.5,
+    fillColor   = "#3A86FF",
+    fillOpacity = 0.9,
+    popup       = popup,
+    label       = row$site_name
   )
 }
 
@@ -379,6 +334,73 @@ legend_html <- htmltools::tags$div(
 
 m <- m %>% addControl(legend_html, position = "bottomright")
 
+
+# ── Load spatial data ──────────────────────────────────────────────────────────
+transects_sf <- st_read("Data/transects_merged.shp", quiet = TRUE)
+transects_sf <- st_transform(transects_sf, crs = 4326)
+
+regions <- st_read("Data/BC-SEAK Hub Regions Mar 2025.shp", quiet = TRUE)
+regions <- st_transform(regions, crs = 4326)
+regions <- regions %>%
+  filter(Region != "AK") %>%
+  mutate(Region_Merged = case_when(
+    Region %in% c("HG", "WC", "NE", "NW") ~ "Northern",
+    Region == "SE"                          ~ "Southeast",
+    Region == "SC"                          ~ "Southcentral",
+    Region == "SW"                          ~ "Southwest",
+    TRUE                                    ~ Region
+  )) %>%
+  group_by(Region_Merged) %>%
+  summarise(geometry = st_union(geometry)) %>%
+  rename(Region = Region_Merged)
+
+region_colors <- c(
+  "Northern"     = "#70A800",
+  "Southeast"    = "#E6E600",
+  "Southcentral" = "#E64C00",
+  "Southwest"    = "#0084A8"
+)
+
+pal_regions <- colorFactor(palette = region_colors, domain = regions$Region)
+
+# ── Add regions + transects to m ──────────────────────────────────────────────
+m_full <- m %>%
+  # Custom panes: regions/transects sit BELOW circle markers (overlayPane = 400)
+  addMapPane("regionsPane",   zIndex = 240) %>%
+  addMapPane("transectsPane", zIndex = 260) %>%
+  addPolygons(
+    data        = regions,
+    fillColor   = ~pal_regions(Region),
+    fillOpacity = 0.2,
+    color       = "gray",
+    weight      = 2,
+    label       = ~Region,
+    group       = "Analysis Regions",
+    options     = pathOptions(pane = "regionsPane")
+  ) %>%
+  addPolylines(
+    data             = transects_sf,
+    color            = "darkgreen",
+    weight           = 3,
+    opacity          = 0.7,
+    label            = ~paste0("GRTS ID: ", GRTS_ID,
+                               " | Years Sampled: ", N_Years,
+                               " | Years: ", Yrs_Smp),
+    highlightOptions = highlightOptions(
+      color        = "darkgreen",
+      weight       = 5,
+      bringToFront = TRUE
+    ),
+    group   = "Transects",
+    options = pathOptions(pane = "transectsPane")
+  ) %>%
+  addLayersControl(
+    overlayGroups = c("Analysis Regions", "Transects"),
+    options       = layersControlOptions(collapsed = FALSE)
+  ) %>%
+  addScaleBar(position = "bottomleft")
+
+m_full
 ```
 
 {{< pagebreak >}}
@@ -621,11 +643,11 @@ In 2025, both model types were run to examine differences in results and assess 
 
 The NABat monitoring program was established in BC in 2016 by WCSC and has sampled 65 grid cells in total. Cells were selected using the GRTSID system [@loeb2015Plan], based on accessibility, presence of bat habitat, suitable recorder sites, and where possible, a road suitable for a driving transect (30–45 km, relatively straight).
 
-Of 63 currently active cells, `r samplingE[9,2]` were monitored in 2025 for a total of `r samplingE[9,3]` site nights ([@tbl-samp]); the remaining `r 63-samplingE[9,2]` were not monitored due to limited local capacity. The network is well-distributed across the province, with a slight bias toward southern BC and population centres (\[@fig-map\]).
+Of 63 currently active cells, `r samplingE[9,2]` were monitored in 2025 for a total of `r samplingE[9,3]` site nights ([@tbl-samp]); the remaining `r 63-samplingE[9,2]` were not monitored due to limited local capacity. The network is well-distributed across the province, with a slight bias toward southern BC and population centres ([@fig-map]).
 
 **Stationary Surveys**
 
-Two to four stationary detectors were deployed across at least two quadrants per grid cell for a minimum of seven nights. Sites are selected to maximize species detection and recording quality across different habitat types (see \[@rae2024North\] for full site selection criteria). Deployment occurs between mid-May and mid-July, after bats have emerged from hibernation but before young bats are volant. Sites and timing are kept consistent between years to minimize variability in conditions affecting bat activity.
+Two to four stationary detectors were deployed across at least two quadrants per grid cell for a minimum of seven nights. Sites are selected to maximize species detection and recording quality across different habitat types (see [@rae2024North] for full site selection criteria). Deployment occurs between mid-May and mid-July, after bats have emerged from hibernation but before young bats are volant. Sites and timing are kept consistent between years to minimize variability in conditions affecting bat activity.
 
 **Transect Surveys**
 
@@ -762,67 +784,6 @@ In 2025, all species previously documented in BC were detected. The manually ver
 #| fig-cap: "NABat survey efforts in 2025 within British Columbia. Analysis regions were defined by Wildlife Conservation Society Canada (WCSC) based on species ranges maps to group areas with similar species compositions."
 #| label: fig-map
 
-# ── Load spatial data ──────────────────────────────────────────────────────────
-transects_sf <- st_read("Data/transects_merged.shp", quiet = TRUE)
-transects_sf <- st_transform(transects_sf, crs = 4326)
-
-regions <- st_read("Data/BC-SEAK Hub Regions Mar 2025.shp", quiet = TRUE)
-regions <- st_transform(regions, crs = 4326)
-regions <- regions %>%
-  filter(Region != "AK") %>%
-  mutate(Region_Merged = case_when(
-    Region %in% c("HG", "WC", "NE", "NW") ~ "Northern",
-    Region == "SE"                          ~ "Southeast",
-    Region == "SC"                          ~ "Southcentral",
-    Region == "SW"                          ~ "Southwest",
-    TRUE                                    ~ Region
-  )) %>%
-  group_by(Region_Merged) %>%
-  summarise(geometry = st_union(geometry)) %>%
-  rename(Region = Region_Merged)
-
-region_colors <- c(
-  "Northern"     = "#70A800",
-  "Southeast"    = "#E6E600",
-  "Southcentral" = "#E64C00",
-  "Southwest"    = "#0084A8"
-)
-
-pal_regions <- colorFactor(palette = region_colors, domain = regions$Region)
-
-# ── Add regions + transects to m ──────────────────────────────────────────────
-m_full <- m %>%
-  # Insert regions behind all other layers by adding first
-  addPolygons(
-    data        = regions,
-    fillColor   = ~pal_regions(Region),
-    fillOpacity = 0.2,
-    color       = "gray",
-    weight      = 2,
-    label       = ~Region,
-    group       = "Analysis Regions"
-  ) %>%
-  addPolylines(
-    data             = transects_sf,
-    color            = "darkgreen",
-    weight           = 3,
-    opacity          = 0.7,
-    label            = ~paste0("GRTS ID: ", GRTS_ID,
-                               " | Years Sampled: ", N_Years,
-                               " | Years: ", Yrs_Smp),
-    highlightOptions = highlightOptions(
-      color        = "darkgreen",
-      weight       = 5,
-      bringToFront = TRUE
-    ),
-    group = "Transects"
-  ) %>%
-  addLayersControl(
-    overlayGroups = c("Analysis Regions", "Transects", "dots", "pies"),
-    options       = layersControlOptions(collapsed = FALSE)
-  ) %>%
-  addScaleBar(position = "bottomleft")
-
 # ── Render ─────────────────────────────────────────────────────────────────────
 if (knitr::pandoc_to("html")) {
   m_full
@@ -848,19 +809,19 @@ if (knitr::pandoc_to("html")) {
 
 Stationary data was used to estimate activity trends for `r sum(merged_table$stationary_trend != "", na.rm = TRUE)` of BC's 15 resident species, while transect data was sufficient to estimate trends for `r sum(merged_table$transect_trend != "", na.rm = TRUE)` species (@tbl-modelcov). Of the stationary models, seven species showed statistically significant positive trends (p \< 0.05):
 
--   Townsend's Big-eared Bat (`r merged_table$stationary_trend[merged_table$Species == "Townsend's Big-eared Bat"]`)
+- Townsend's Big-eared Bat (`r merged_table$stationary_trend[merged_table$Species == "Townsend's Big-eared Bat"]`)
 
--   Big Brown Bat (`r merged_table$stationary_trend[merged_table$Species == "Big Brown Bat"]`)
+- Big Brown Bat (`r merged_table$stationary_trend[merged_table$Species == "Big Brown Bat"]`)
 
--   Spotted Bat (`r merged_table$stationary_trend[merged_table$Species == "Spotted Bat"]`)
+- Spotted Bat (`r merged_table$stationary_trend[merged_table$Species == "Spotted Bat"]`)
 
--   Silver-haired Bat (`r merged_table$stationary_trend[merged_table$Species == "Silver-haired Bat"]`)
+- Silver-haired Bat (`r merged_table$stationary_trend[merged_table$Species == "Silver-haired Bat"]`)
 
--   California Myotis (`r merged_table$stationary_trend[merged_table$Species == "California Myotis"]`)
+- California Myotis (`r merged_table$stationary_trend[merged_table$Species == "California Myotis"]`)
 
--   Little Brown Mytois( `r merged_table$stationary_trend[merged_table$Species == "Little Brown Myotis"]`).
+- Little Brown Mytois( `r merged_table$stationary_trend[merged_table$Species == "Little Brown Myotis"]`).
 
--   Long-legged Myotis (`r merged_table$stationary_trend[merged_table$Species == "Long-legged Myotis"]`).
+- Long-legged Myotis (`r merged_table$stationary_trend[merged_table$Species == "Long-legged Myotis"]`).
 
 No significant negative trends were detected in the stationary models. The remaining species with sufficient data had non-significant trend estimates.
 
@@ -890,9 +851,9 @@ kable(merged_table %>% select(Species, stationary_trend, stationary_p, transect_
 
 Regional trend analyses revealed significant results (p \< 0.05) across all regions with the most found in the South Coastal region (@tbl-regionmodelcov). Most significant results were positive, but significant negative trends were found in:
 
--   Hoary Bat in the South coastal Region (`r final_table[final_table$Species == "Hoary Bat", "South Coastal Region_trend_ci"]`)
+- Hoary Bat in the South coastal Region (`r final_table[final_table$Species == "Hoary Bat", "South Coastal Region_trend_ci"]`)
 
--   Yuma Myotis in the Northern Region (`r final_table[final_table$Species == "Yuma Myotis", "Northern Region_trend_ci"]` ).
+- Yuma Myotis in the Northern Region (`r final_table[final_table$Species == "Yuma Myotis", "Northern Region_trend_ci"]` ).
 
 ```{r}
 #| echo: false
@@ -1039,11 +1000,11 @@ Field crews across British Columbia continue to reliably collect recordings for 
 
 The BC NABat program has yielded a large and robust acoustic dataset that provides solid baseline information on distribution and relative abundance of 12 of 15 resident BC bat species. The data that has been collected so far are an invaluable reference point for BC's bat distributions and activity that improve with each additional year of monitoring. Key considerations for the future of the program include:
 
--   **Manual Verification Efficiency.** This was the first year that the BC monitoring program reduced the proportion of manual vetting carried out in the recordings to \~50% based on the findings from Stratton et al. (2022). Careful consideration of these results compared to previous years will be considered as a guide for future models and analyses.
+- **Manual Verification Efficiency.** This was the first year that the BC monitoring program reduced the proportion of manual vetting carried out in the recordings to \~50% based on the findings from Stratton et al. (2022). Careful consideration of these results compared to previous years will be considered as a guide for future models and analyses.
 
--   **Transect Sampling.** Transects are a relatively high labour/effort source of data than stationary detectors that require participants to work late into the night. They also often do not collect many recordings of bats in BC relative to the stationary detectors. However, transects are still the only source of reliable estimates of relative abundance. While continuing to support current transect sampling efforts, the NNW Bat Hub will work along side other partners to also explore other methods of creating reliable abundance estimates that are less labour intensive.
+- **Transect Sampling.** Transects are a relatively high labour/effort source of data than stationary detectors that require participants to work late into the night. They also often do not collect many recordings of bats in BC relative to the stationary detectors. However, transects are still the only source of reliable estimates of relative abundance. While continuing to support current transect sampling efforts, the NNW Bat Hub will work along side other partners to also explore other methods of creating reliable abundance estimates that are less labour intensive.
 
--   **Adding new grid cells.** Efforts will continue to be made to monitor as many of the same grid cells as possible, as the power of the dataset improves with each additional year. Moreover, looking for new opportunities to add new grid cells especially in under sampled regions of the province can help fill knowledge gaps for species distributions. New cells could also be added within ranges of species that are not widespread but easily monitored using acoustics. For example, Fringed Myotis and Spotted Bats are highly suited to acoustic surveillance, but only occur within a small portion of the grid cells being monitored currently
+- **Adding new grid cells.** Efforts will continue to be made to monitor as many of the same grid cells as possible, as the power of the dataset improves with each additional year. Moreover, looking for new opportunities to add new grid cells especially in under sampled regions of the province can help fill knowledge gaps for species distributions. New cells could also be added within ranges of species that are not widespread but easily monitored using acoustics. For example, Fringed Myotis and Spotted Bats are highly suited to acoustic surveillance, but only occur within a small portion of the grid cells being monitored currently
 
 {{< pagebreak >}}
 
@@ -1190,6 +1151,5 @@ Species and region specific dynamic occupancy results
 ![](images/clipboard-3386870832.png)
 
 ::: {.content-visible when-format="pdf"}
-
 # Literature Cited
 :::
