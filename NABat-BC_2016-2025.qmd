@@ -47,6 +47,82 @@ nocite: '@*'
 :::
 
 ```{r}
+#| label: Reference - creating summary tables
+#| eval: true
+#| echo: false
+#| message: false
+#| warning: false
+#| cache: true
+#| include: false
+
+#-------this chunk is just for reference to see how the summary tables were created
+
+##----Sampling effort summary----
+# Set to FALSE to count stationary detector sites only (drops mobile transects)
+include_transects <- TRUE
+
+raw <- read_excel("Data/Raw/AllYearActivitybyNight_2016_2025_BC_withALLmetadata.xlsx", sheet = "Occupancy_NEAR")
+
+effort_nights <- raw %>%
+  select(GRTS_Cell_ID, Quadrant, Night) %>%
+  mutate(Night = as.Date(Night),
+         Year  = year(Night)) %>%
+  distinct(GRTS_Cell_ID, Quadrant, Night, .keep_all = TRUE) %>%
+  # Drop nights with bad detector clock dates (1963, 2000, 2001, 2015)
+  filter(between(Year, 2016, 2025)) %>%
+  { if (include_transects) . else filter(., Quadrant != "Transects") }
+
+samplingE <- effort_nights %>%
+  group_by(Year) %>%
+  summarise(
+    `Number of Grids`       = n_distinct(GRTS_Cell_ID),
+    `Number of Site Nights` = n(),   # one row = one site (cell + quadrant) x night
+    .groups = "drop"
+  ) %>%
+  arrange(Year)
+
+write.csv(samplingE, "Data/Analyzed/SummarySamplingEffort.csv")
+
+##---Summary for map----
+#only using full species ID not couplets
+sp_cols <- c("ANPA", "COTO", "EPFU", "EUMA", "LABO", "LACI", "LANO", "MYCA", "MYCI", "MYEV", "MYLU", "MYTH", "MYVO", "MYSE", "MYYU", "PAHE", "TABR")
+site_list <-raw %>%
+  # Clean nightly data: one row per site x night
+  mutate(year = lubridate::year(Night)) %>%
+  distinct(GRTS_Cell_ID, Quadrant, Night, .keep_all = TRUE) %>%   # drop duplicates
+  filter(between(year, 2016, 2025),                     # drop bad detector dates
+         Quadrant != "Transects",                       # transects drawn as lines
+         !is.na(Latitude), !is.na(Longitude)) %>%
+  transmute(grts_id  = as.character(GRTS_Cell_ID),
+            quadrant = as.character(Quadrant),
+            site_name = paste(grts_id, quadrant),
+            Lat = Latitude, Long = Longitude, year,
+            across(all_of(sp_cols))) %>%
+  pivot_longer(all_of(sp_cols), names_to = "species", values_to = "recordings") %>%
+  # recordings per species per site per year
+  group_by(site_name, grts_id, quadrant, Lat, Long, year, species) %>%
+  summarise(n = sum(recordings, na.rm = TRUE), .groups = "drop") %>%
+  # one row per site
+  group_by(site_name, grts_id, quadrant, Lat, Long) %>%
+  summarise(
+    Years_Sampled = paste(sort(unique(year)), collapse = ", "),
+    N_Years       = n_distinct(year),
+    years         = list(sort(unique(year))),
+    total         = sum(n),
+    sp_data       = list(tibble(species, n, year) %>% filter(n > 0)),
+    .groups = "drop"
+  )
+
+saveRDS(site_list, "Data/Analyzed/MapDataSummary.rds")
+
+#for a readable version save as csv.
+site_list %>%
+  select(-years) %>%
+  tidyr::unnest(sp_data) %>%
+  write.csv("Data/Analyzed/MapDataSummary.csv", row.names = FALSE)
+```
+
+```{r}
 #| label: setup - load libraries, data and create covariates in models table
 #| include: false
 #| echo: false
@@ -65,6 +141,7 @@ library(lubridate)
 library(flextable)
 library(tidyverse)
 library(readr)
+library(readxl)
 library(reactable)
 library(leaflet)
 library(leaflet.extras)
@@ -85,13 +162,8 @@ model_covariates <- read.csv("Data/Analyzed/ModelVariables.csv")
 transect_covariates <- read.csv("Data/Analyzed/ModelVariables_Transect.csv")
 #this comes from running the ModelSelection.R code where it runs all of the covariates and chooses the best model best on AIC
 
-#upload data with bat passes and sites
-bat_summary <- readRDS("Data/Analyzed/bat_summary.rds")
-sites_2025  <- read_csv("Data/Analyzed/Sampling2025.csv") %>%   # already how you load it
-  mutate(
-    grts_id  = as.character(GRTS.Cell.ID),
-    quadrant = as.character(Quadrant)
-  )
+#upload summary data for map
+site_list <- readRDS("Data/Analyzed/MapDataSummary.rds")
 
 #format the covariates df 
 
@@ -142,7 +214,6 @@ transect_covariates<- transect_covariates %>%
     Covariates = clean_covars(vars)
   ) %>%
   select(Common_Name, Species_Code = sp, Covariates)
-
 
 ```
 
@@ -218,24 +289,7 @@ collapse_pie <- function(sp_df) {
     arrange(desc(n))
 }
 
-# ── 7. Build site list ─────────────────────────────────────────────────────────
-site_list <- sites_2025 %>%
-  mutate(
-    grts_id   = as.character(GRTS.Cell.ID),
-    quadrant  = as.character(Quadrant),
-    site_name = paste(GRTS.Cell.ID, Quadrant)
-  ) %>%
-  filter(!is.na(Lat), !is.na(Long)) %>%
-  left_join(bat_summary, by = c("grts_id", "quadrant")) %>%
-  group_by(site_name, grts_id, quadrant, Lat, Long, Years_Sampled, N_Years) %>%
-  summarise(
-    sp_data = list(tibble(species, n, year)),
-    total   = sum(n, na.rm = TRUE),
-    years   = list(sort(unique(year))),
-    .groups = "drop"
-  )
-
-# ── 8. Draw map ────────────────────────────────────────────────────────────────
+# ── 7. Draw map ────────────────────────────────────────────────────────────────
 m <- leaflet() %>%
   addProviderTiles(providers$Esri.WorldGrayCanvas)
 
@@ -315,7 +369,7 @@ for (i in seq_len(nrow(site_list))) {
   )
 }
 
-# ── 9. Legend ─────────────────────────────────────────────────────────────────
+# ── 8. Legend ─────────────────────────────────────────────────────────────────
 legend_colors <- all_pie_colors[!duplicated(names(all_pie_colors))]
 legend_colors <- legend_colors[order(names(legend_colors))]
 if ("Other" %in% names(legend_colors)) {
@@ -335,11 +389,11 @@ legend_html <- htmltools::tags$div(
 m <- m %>% addControl(legend_html, position = "bottomright")
 
 
-# ── Load spatial data ──────────────────────────────────────────────────────────
-transects_sf <- st_read("Data/transects_merged.shp", quiet = TRUE)
+# ── 9. Load spatial data ──────────────────────────────────────────────────────────
+transects_sf <- st_read("Data/Mapping/transects_merged.shp", quiet = TRUE)
 transects_sf <- st_transform(transects_sf, crs = 4326)
 
-regions <- st_read("Data/BC-SEAK Hub Regions Mar 2025.shp", quiet = TRUE)
+regions <- st_read("Data/Mapping/BC-SEAK Hub Regions Mar 2025.shp", quiet = TRUE)
 regions <- st_transform(regions, crs = 4326)
 regions <- regions %>%
   filter(Region != "AK") %>%

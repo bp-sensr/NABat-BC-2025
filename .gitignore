@@ -5,3 +5,7 @@
 
 /.quarto/
 **/*.quarto_ipynb
+
+# Project folders not tracked
+Archive/
+/Data/Raw/
