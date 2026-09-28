@@ -9,3 +9,7 @@
 # Project folders not tracked
 Archive/
 /Data/Raw/
+
+#specific data
+/Data/Analyzed/MapDataSummary.csv
+/Data/Analyzed/MapDataSummary.rds
