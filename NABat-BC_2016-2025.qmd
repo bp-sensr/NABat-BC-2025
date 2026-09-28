@@ -55,71 +55,75 @@ nocite: '@*'
 #| cache: true
 #| include: false
 
-#-------this chunk is just for reference to see how the summary tables were created
+# #-------this chunk is just for reference to see how the summary tables were created
+# 
+# ##----Sampling effort summary----
+# # Set to FALSE to count stationary detector sites only (drops mobile transects)
+# include_transects <- TRUE
+# 
+# raw <- read_excel("Data/Raw/AllYearActivitybyNight_2016_2025_BC_withALLmetadata.xlsx", sheet = "Occupancy_NEAR")
+# 
+# effort_nights <- raw %>%
+#   select(GRTS_Cell_ID, Quadrant, Night) %>%
+#   mutate(Night = as.Date(Night),
+#          Year  = year(Night)) %>%
+#   distinct(GRTS_Cell_ID, Quadrant, Night, .keep_all = TRUE) %>%
+#   # Drop nights with bad detector clock dates (1963, 2000, 2001, 2015)
+#   filter(between(Year, 2016, 2025)) %>%
+#   { if (include_transects) . else filter(., Quadrant != "Transects") }
+# 
+# samplingE <- effort_nights %>%
+#   group_by(Year) %>%
+#   summarise(
+#     `Number of Grids`       = n_distinct(GRTS_Cell_ID),
+#     `Number of Site Nights` = n(),   # one row = one site (cell + quadrant) x night
+#     .groups = "drop"
+#   ) %>%
+#   arrange(Year)
+# 
+# write.csv(samplingE, "Data/Analyzed/SummarySamplingEffort.csv")
 
-##----Sampling effort summary----
-# Set to FALSE to count stationary detector sites only (drops mobile transects)
-include_transects <- TRUE
+#Sampling effort in BC Parks --NEED TO WRITE THIS!!
 
-raw <- read_excel("Data/Raw/AllYearActivitybyNight_2016_2025_BC_withALLmetadata.xlsx", sheet = "Occupancy_NEAR")
 
-effort_nights <- raw %>%
-  select(GRTS_Cell_ID, Quadrant, Night) %>%
-  mutate(Night = as.Date(Night),
-         Year  = year(Night)) %>%
-  distinct(GRTS_Cell_ID, Quadrant, Night, .keep_all = TRUE) %>%
-  # Drop nights with bad detector clock dates (1963, 2000, 2001, 2015)
-  filter(between(Year, 2016, 2025)) %>%
-  { if (include_transects) . else filter(., Quadrant != "Transects") }
-
-samplingE <- effort_nights %>%
-  group_by(Year) %>%
-  summarise(
-    `Number of Grids`       = n_distinct(GRTS_Cell_ID),
-    `Number of Site Nights` = n(),   # one row = one site (cell + quadrant) x night
-    .groups = "drop"
-  ) %>%
-  arrange(Year)
-
-write.csv(samplingE, "Data/Analyzed/SummarySamplingEffort.csv")
-
-##---Summary for map----
-#only using full species ID not couplets
-sp_cols <- c("ANPA", "COTO", "EPFU", "EUMA", "LABO", "LACI", "LANO", "MYCA", "MYCI", "MYEV", "MYLU", "MYTH", "MYVO", "MYSE", "MYYU", "PAHE", "TABR")
-site_list <-raw %>%
-  # Clean nightly data: one row per site x night
-  mutate(year = lubridate::year(Night)) %>%
-  distinct(GRTS_Cell_ID, Quadrant, Night, .keep_all = TRUE) %>%   # drop duplicates
-  filter(between(year, 2016, 2025),                     # drop bad detector dates
-         Quadrant != "Transects",                       # transects drawn as lines
-         !is.na(Latitude), !is.na(Longitude)) %>%
-  transmute(grts_id  = as.character(GRTS_Cell_ID),
-            quadrant = as.character(Quadrant),
-            site_name = paste(grts_id, quadrant),
-            Lat = Latitude, Long = Longitude, year,
-            across(all_of(sp_cols))) %>%
-  pivot_longer(all_of(sp_cols), names_to = "species", values_to = "recordings") %>%
-  # recordings per species per site per year
-  group_by(site_name, grts_id, quadrant, Lat, Long, year, species) %>%
-  summarise(n = sum(recordings, na.rm = TRUE), .groups = "drop") %>%
-  # one row per site
-  group_by(site_name, grts_id, quadrant, Lat, Long) %>%
-  summarise(
-    Years_Sampled = paste(sort(unique(year)), collapse = ", "),
-    N_Years       = n_distinct(year),
-    years         = list(sort(unique(year))),
-    total         = sum(n),
-    sp_data       = list(tibble(species, n, year) %>% filter(n > 0)),
-    .groups = "drop"
-  )
-
-saveRDS(site_list, "Data/Analyzed/MapDataSummary.rds")
-
-#for a readable version save as csv.
-site_list %>%
-  select(-years) %>%
-  tidyr::unnest(sp_data) %>%
-  write.csv("Data/Analyzed/MapDataSummary.csv", row.names = FALSE)
+# 
+# ##---Summary for map----
+# #only using full species ID not couplets
+# sp_cols <- c("ANPA", "COTO", "EPFU", "EUMA", "LABO", "LACI", "LANO", "MYCA", "MYCI", "MYEV", "MYLU", "MYTH", "MYVO", "MYSE", "MYYU", "PAHE", "TABR")
+# site_list <-raw %>%
+#   # Clean nightly data: one row per site x night
+#   mutate(year = lubridate::year(Night)) %>%
+#   distinct(GRTS_Cell_ID, Quadrant, Night, .keep_all = TRUE) %>%   # drop duplicates
+#   filter(between(year, 2016, 2025),                     # drop bad detector dates
+#          Quadrant != "Transects",                       # transects drawn as lines
+#          !is.na(Latitude), !is.na(Longitude)) %>%
+#   transmute(grts_id  = as.character(GRTS_Cell_ID),
+#             quadrant = as.character(Quadrant),
+#             site_name = paste(grts_id, quadrant),
+#             Lat = Latitude, Long = Longitude, year,
+#             across(all_of(sp_cols))) %>%
+#   pivot_longer(all_of(sp_cols), names_to = "species", values_to = "recordings") %>%
+#   # recordings per species per site per year
+#   group_by(site_name, grts_id, quadrant, Lat, Long, year, species) %>%
+#   summarise(n = sum(recordings, na.rm = TRUE), .groups = "drop") %>%
+#   # one row per site
+#   group_by(site_name, grts_id, quadrant, Lat, Long) %>%
+#   summarise(
+#     Years_Sampled = paste(sort(unique(year)), collapse = ", "),
+#     N_Years       = n_distinct(year),
+#     years         = list(sort(unique(year))),
+#     total         = sum(n),
+#     sp_data       = list(tibble(species, n, year) %>% filter(n > 0)),
+#     .groups = "drop"
+#   )
+# 
+# saveRDS(site_list, "Data/Analyzed/MapDataSummary.rds")
+# 
+# #for a readable version save as csv.
+# site_list %>%
+#   select(-years) %>%
+#   tidyr::unnest(sp_data) %>%
+#   write.csv("Data/Analyzed/MapDataSummary.csv", row.names = FALSE)
 ```
 
 ```{r}
@@ -231,7 +235,7 @@ sp_cols <- c("ANPA","COTO","EPFU","EUMA","LABO","LACI","LANO",
              "MYCA","MYCI","MYEV","MYLU","MYSE","MYTH","MYVO","MYYU",
              "PAHE","TABR")
 
-# ── 3. Colour palette ──────────────────────────────────────────────────────────
+# ── 2. Colour palette ──────────────────────────────────────────────────────────
 sp_colors <- c(
   "ANPA" = "#3A86FF", "COTO" = "#FB5607", "EPFU" = "#F28E2B",
   "EUMA" = "#FF006E", "LABO" = "#8338EC", "LACI" = "#06D6A0",
@@ -241,7 +245,7 @@ sp_colors <- c(
   "PAHE" = "#EDC948", "TABR" = "#A05195", "Other" = "#AAAAAA"
 )
 
-# ── 4. SVG pie helper ──────────────────────────────────────────────────────────
+# ── 3. SVG pie helper ──────────────────────────────────────────────────────────
 make_pie_svg <- function(values, colors, size = 96) {
   total <- sum(values)
   if (total == 0) return(NULL)
@@ -266,7 +270,7 @@ make_pie_svg <- function(values, colors, size = 96) {
   paste0("data:image/svg+xml;base64,", base64enc::base64encode(charToRaw(svg)))
 }
 
-# ── 5. HTML table body helper ──────────────────────────────────────────────────
+# ── 4. HTML table body helper ──────────────────────────────────────────────────
 make_sp_table <- function(sp_df, pie_colors) {
   sp_df %>%
     arrange(desc(n)) %>%
@@ -279,21 +283,9 @@ make_sp_table <- function(sp_df, pie_colors) {
     paste(collapse = "")
 }
 
-# ── 6. (collapse_pie kept for reference; no longer used in popups) ──────────────
-collapse_pie <- function(sp_df) {
-  top5 <- sp_df$species[order(sp_df$n, decreasing = TRUE)][1:min(5, nrow(sp_df))]
-  sp_df %>%
-    mutate(species = if_else(species %in% top5, species, "Other")) %>%
-    group_by(species) %>%
-    summarise(n = sum(n), .groups = "drop") %>%
-    arrange(desc(n))
-}
-
-# ── 7. Draw map ────────────────────────────────────────────────────────────────
+# ── 5. Draw map with site markers ──────────────────────────────────────────────
 m <- leaflet() %>%
   addProviderTiles(providers$Esri.WorldGrayCanvas)
-
-all_pie_colors <- c()
 
 for (i in seq_len(nrow(site_list))) {
   row   <- site_list[i, ]
@@ -303,7 +295,7 @@ for (i in seq_len(nrow(site_list))) {
   # Skip sites with no detections at all
   if (is.null(sp) || nrow(sp) == 0 || sum(sp$n, na.rm = TRUE) == 0) next
   
-  # -- Build one pie + species table per year (most recent first) --------------
+  # -- One pie + species table per year (most recent first) ------------------
   year_blocks <- purrr::map_chr(sort(years, decreasing = TRUE), function(yr) {
     sp_yr <- sp %>%
       filter(year == yr) %>%
@@ -322,9 +314,6 @@ for (i in seq_len(nrow(site_list))) {
       colorRampPalette(brewer.pal(8, "Dark2"))(max(length(unknown), 1)),
       unknown)
     yr_colors  <- c(sp_colors, fallback)
-    
-    # Accumulate for the map-level legend (section 9)
-    all_pie_colors <<- c(all_pie_colors, yr_colors[yr_species])
     
     uri         <- make_pie_svg(sp_yr$n, yr_colors[yr_species], size = 96)
     legend_rows <- make_sp_table(sp_yr, yr_colors)
@@ -345,7 +334,7 @@ for (i in seq_len(nrow(site_list))) {
     )
   }) %>% paste(collapse = "")
   
-  # -- Popup: stacked yearly pies ----------------------------------------------
+  # -- Popup: stacked yearly pies --------------------------------------------
   popup <- sprintf(
     '<div style="font-family:sans-serif;min-width:270px;max-width:340px;max-height:420px;overflow-y:auto;">
        <b style="font-size:14px;">%s</b>
@@ -355,7 +344,7 @@ for (i in seq_len(nrow(site_list))) {
     row$site_name, year_blocks
   )
   
-  # -- Blue dot marker ---------------------------------------------------------
+  # -- Blue dot marker -------------------------------------------------------
   m <- m %>% addCircleMarkers(
     lng         = row$Long, lat = row$Lat,
     radius      = 6,
@@ -369,27 +358,7 @@ for (i in seq_len(nrow(site_list))) {
   )
 }
 
-# ── 8. Legend ─────────────────────────────────────────────────────────────────
-legend_colors <- all_pie_colors[!duplicated(names(all_pie_colors))]
-legend_colors <- legend_colors[order(names(legend_colors))]
-if ("Other" %in% names(legend_colors)) {
-  legend_colors <- c(legend_colors[names(legend_colors) != "Other"],
-                     legend_colors["Other"])
-}
-
-legend_html <- htmltools::tags$div(
-  style = "background:white;padding:10px 14px;border-radius:6px;box-shadow:0 1px 5px rgba(0,0,0,.3);font-family:sans-serif;font-size:12px;max-height:300px;overflow-y:auto;",
-  htmltools::tags$b("Species"),
-  htmltools::tags$hr(style = "margin:4px 0"),
-  htmltools::HTML(paste(purrr::map_chr(names(legend_colors), ~sprintf(
-    '<div style="display:flex;align-items:center;margin-bottom:3px"><span style="display:inline-block;width:12px;height:12px;border-radius:50%%;background:%s;margin-right:6px"></span>%s</div>',
-    legend_colors[.x], .x)), collapse = ""))
-)
-
-m <- m %>% addControl(legend_html, position = "bottomright")
-
-
-# ── 9. Load spatial data ──────────────────────────────────────────────────────────
+# ── 6. Load spatial data ───────────────────────────────────────────────────────
 transects_sf <- st_read("Data/Mapping/transects_merged.shp", quiet = TRUE)
 transects_sf <- st_transform(transects_sf, crs = 4326)
 
@@ -415,9 +384,22 @@ region_colors <- c(
   "Southwest"    = "#0084A8"
 )
 
-pal_regions <- colorFactor(palette = region_colors, domain = regions$Region)
+pal_regions <- colorFactor(
+  palette = unname(region_colors),
+  levels  = names(region_colors)
+)
 
-# ── Add regions + transects to m ──────────────────────────────────────────────
+# ── 7. Regions legend (custom HTML, same approach as the old species legend) ───
+region_legend_html <- htmltools::tags$div(
+  style = "background:white;padding:10px 14px;border-radius:6px;box-shadow:0 1px 5px rgba(0,0,0,.3);font-family:sans-serif;font-size:12px;",
+  htmltools::tags$b("Analysis Regions"),
+  htmltools::tags$hr(style = "margin:4px 0"),
+  htmltools::HTML(paste(purrr::map_chr(names(region_colors), ~sprintf(
+    '<div style="display:flex;align-items:center;margin-bottom:3px"><span style="display:inline-block;width:14px;height:14px;background:%s;opacity:0.6;border:1px solid gray;margin-right:6px"></span>%s</div>',
+    region_colors[.x], .x)), collapse = ""))
+)
+
+# ── 8. Add regions, transects and legend to the map ────────────────────────────
 m_full <- m %>%
   # Custom panes: regions/transects sit BELOW circle markers (overlayPane = 400)
   addMapPane("regionsPane",   zIndex = 240) %>%
@@ -448,6 +430,7 @@ m_full <- m %>%
     group   = "Transects",
     options = pathOptions(pane = "transectsPane")
   ) %>%
+  addControl(region_legend_html, position = "bottomright") %>%
   addLayersControl(
     overlayGroups = c("Analysis Regions", "Transects"),
     options       = layersControlOptions(collapsed = FALSE)
@@ -683,13 +666,11 @@ Acoustic recording is a cost-effective method for monitoring bat populations acr
 
 4.  **Processing limitations** — Auto-ID software enables efficient processing of large datasets but has known high misclassification rates for bats, making manual verification necessary to ensure accurate results.
 
-## Update in Statistical Models
+## Updates in Modelling Approaches
 
-Bat monitoring data can be analyzed using different statistical approaches, each with distinct assumptions and outputs. Activity trend models examine changes in relative acoustic activity over time, providing a straightforward measure of whether bat detections are increasing, decreasing, or remaining stable across the monitoring network.
+Bat monitoring data can be analyzed using different statistical approaches, each with distinct assumptions and outputs. In previous years, trends in British Columbia were assessed using activity trend models, which examine changes in relative acoustic activity over time. These models provide a straightforward measure of whether bat detections are increasing, decreasing, or remaining stable across the monitoring network. In 2025, we also ran dynamic occupancy models for the first time, allowing us to compare results between the two approaches and assess the complementary information each provides.
 
-Dynamic occupancy models take a different approach, estimating the probability that a species occupies a given site, while explicitly accounting for imperfect detection. Rather than treating a non-detection as an absence, these models distinguish between a species being truly absent versus simply going undetected — an important consideration given the variable detectability of bats discussed above. They also track colonization and extinction probabilities across sites over time, providing insight into range shifts and local population dynamics.
-
-In 2025, both model types were run to examine differences in results and assess the complementary information each approach provides.
+Dynamic occupancy models, estimate the probability that a species occupies a given site while explicitly accounting for imperfect detection. Rather than treating a non-detection as an absence, these models distinguish between a species being truly absent and simply going undetected, an important consideration given the variable detectability of bats discussed above. They also track colonization and extinction probabilities across sites over time, providing insight into range shifts and local population dynamics.
 
 # Methods
 
@@ -1020,8 +1001,6 @@ Poorly estimated species: PAHE and TABR had extremely low detection probabilitie
 
 Detection: Temperature was the most consistent detection covariate–warmer nights equate to higher detection for most species. There were some clutter effects on detection probability that were species-specific. Julian date effects were mixed across species. 
 
-![Dynamic occupancy estimates (ψ) for 17 bat species monitored across British Columbia from 2017–2025. Points represent annual mean occupancy estimates and shaded areas indicate 95% credible intervals.](Figures/DOccupancy/ALL_occupancy_panel.png){#fig-dynamicocALL}
-
 # Discussion
 
 ## Species Presence
@@ -1068,142 +1047,363 @@ The BC NABat program has yielded a large and robust acoustic dataset that provid
 
 Species and region specific dynamic occupancy results
 
-![](images/clipboard-1267572074.png)
+```{r}
+#| label: make interactive occupancy maps
+#| include: false
+#| echo: false
+#| eval: true
+#| warning: false
+#| message: false
+
+library(dplyr)
+library(plotly)
+old_json_opts <- options(htmlwidgets.TOJSON_ARGS = NULL)
+
+make_occ_slider_map <- function(sp_code, sp_name,
+                                path = "data") {
+  
+  occ <- read.csv(file.path("Figures/DOccupancy/", paste0("site_year_occupancy_", sp_code, ".csv")))
+  
+  pal_hex <- RColorBrewer::brewer.pal(9, "OrRd")
+  pal_fun <- scales::col_numeric(pal_hex, domain = c(0, 1))
+  
+  occ_plot <- occ |>
+    mutate(
+      surveyed   = as.logical(surveyed),
+      detected   = suppressWarnings(as.numeric(detected)),
+      p_occupied = suppressWarnings(as.numeric(p_occupied)),
+      status = case_when(
+        !surveyed     ~ "Not surveyed",
+        detected == 1 ~ "Detected",
+        TRUE          ~ "Not detected"
+      ),
+      symbol = ifelse(status == "Not detected", "triangle-up", "circle"),
+      fill   = ifelse(surveyed, pal_fun(pmin(pmax(p_occupied, 0), 1)), "rgba(0,0,0,0)"),
+      line   = ifelse(surveyed, "#4d4d4d", "#9e9e9e"),
+      size   = ifelse(surveyed, 12, 6),
+      hover  = paste0(
+        "<b>", site, "</b><br>", region,
+        "<br>Year: ", year,
+        "<br>", status,
+        ifelse(surveyed,
+               paste0(" (", n_visits, " visits)",
+                      "<br>P(occupied): ", sprintf("%.2f", p_occupied)),
+               ""),
+        "<br>\u03c8 expected: ",
+        sprintf("%.2f [%.2f\u2013%.2f]", psi_expected, psi_expected_lo95, psi_expected_hi95)
+      )
+    ) |>
+    arrange(year, site)
+  
+  # point placed off-map, used only to draw legend entries / colourbar
+  off_lat <- 0; off_lon <- 0
+  
+  p <- plot_ly(height = 720) |>
+    # animated site layer
+    add_trace(
+      data = occ_plot, type = "scattergeo", mode = "markers",
+      lat = ~lat, lon = ~long, frame = ~year, ids = ~site,
+      text = ~hover, hoverinfo = "text",
+      marker = list(
+        symbol = ~symbol, color = ~I(fill), size = ~size, opacity = 0.95,
+        line = list(color = ~I(line), width = 1)
+      ),
+      showlegend = FALSE
+    ) |>
+    # colourbar
+    add_trace(
+      type = "scattergeo", mode = "markers",
+      lat = off_lat, lon = off_lon, hoverinfo = "skip", showlegend = FALSE,
+      marker = list(
+        color = 0, cmin = 0, cmax = 1,
+        colorscale = list(seq(0, 1, length.out = length(pal_hex)), pal_hex),
+        showscale = TRUE,
+        colorbar = list(title = list(text = "P(occupied)"), len = 0.45, y = 0.35,
+                        tickvals = seq(0, 1, 0.25))
+      )
+    ) |>
+    # shape legend
+    add_trace(type = "scattergeo", mode = "markers", lat = off_lat, lon = off_lon,
+              name = "Detected", hoverinfo = "skip",
+              marker = list(symbol = "circle", size = 11, color = "#bdbdbd",
+                            line = list(color = "#4d4d4d", width = 1))) |>
+    add_trace(type = "scattergeo", mode = "markers", lat = off_lat, lon = off_lon,
+              name = "Not detected", hoverinfo = "skip",
+              marker = list(symbol = "triangle-up", size = 11, color = "#bdbdbd",
+                            line = list(color = "#4d4d4d", width = 1))) |>
+    add_trace(type = "scattergeo", mode = "markers", lat = off_lat, lon = off_lon,
+              name = "Not surveyed", hoverinfo = "skip",
+              marker = list(symbol = "circle", size = 7, color = "rgba(0,0,0,0)",
+                            line = list(color = "#9e9e9e", width = 1))) |>
+    layout(
+      title = list(text = paste0("<b>", sp_code, " \u2014 ", sp_name,
+                                 ": probability of occupancy by year</b>"),
+                   x = 0.02),
+      geo = list(
+        scope = "north america", resolution = 50,
+        projection = list(type = "mercator"),
+        showland = TRUE,  landcolor  = "#f7f7f7",
+        showocean = TRUE, oceancolor = "#e8f0f5",
+        showlakes = TRUE, lakecolor  = "#e8f0f5",
+        showcountries = TRUE, countrycolor = "#9e9e9e",
+        showsubunits  = TRUE, subunitcolor = "#c8c8c8",
+        lonaxis = list(range = range(occ_plot$long) + c(-1, 1)),
+        lataxis = list(range = range(occ_plot$lat)  + c(-0.5, 0.5))
+      ),
+      legend = list(x = 1.02, y = 0.9)
+    ) |>
+    animation_opts(frame = 900, transition = 300, redraw = TRUE) |>
+    animation_slider(currentvalue = list(prefix = "Year: ", font = list(size = 16))) |>
+    animation_button(label = "Play")
+  
+  p
+}
+```
 
-![](images/clipboard-2381023598.png)
+## Pallid Bat (*Antrozous pallidus)*
 
-![](images/clipboard-2584432345.png)
+![](Figures/DOccupancy/fig2_bc_dynamics_ANPA.png)![](Figures/DOccupancy/fig4_regional_dynamics_ANPA.png)
 
-![](images/clipboard-4243416049.png)
+```{r}
+#| label: fig-occ-slider-anpa
+#| fig-cap: "Pallid bat (ANPA): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| echo: false
+#| warning: false
+#| message: false
 
-![](images/clipboard-2768753452.png)
+make_occ_slider_map("ANPA", "Pallid bat")
+```
 
-![](images/clipboard-361956783.png)
+![](Figures/DOccupancy/fig1_covariate_effects_ANPA.png)![](Figures/DOccupancy/fig5_detection_by_year_ANPA.png)
 
-![](images/clipboard-291564491.png)
+## Townsend's big-eared bat *(Corynorhinus townsendii*)
 
-![](images/clipboard-2480187280.png)
+![](Figures/DOccupancy/fig2_bc_dynamics_COTO.png)![](Figures/DOccupancy/fig4_regional_dynamics_COTO.png)
 
-![](images/clipboard-3844675028.png)
+```{r}
+#| label: fig-occ-slider-COTO
+#| fig-cap: "Townsend's big-eared bat (COTO): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| echo: false
+#| warning: false
+#| message: false
 
-![](images/clipboard-3490882160.png)
+make_occ_slider_map("COTO", "Townsend's big-eared bat")
+```
 
-![](images/clipboard-390509750.png)
+![](Figures/DOccupancy/fig1_covariate_effects_COTO.png)![](Figures/DOccupancy/fig5_detection_by_year_COTO.png)
 
-![](images/clipboard-358754788.png)
+## Big brown bat (*Eptesicus fuscus*)
 
-![](images/clipboard-149203103.png)
+![](Figures/DOccupancy/fig2_bc_dynamics_EPFU.png)![](Figures/DOccupancy/fig4_regional_dynamics_EPFU.png)
 
-![](images/clipboard-3641637788.png)
+```{r}
+#| label: fig-occ-slider-EPFU
+#| fig-cap: "Big brown bat (EPFU): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| echo: false
+#| warning: false
+#| message: false
 
-![](images/clipboard-1886603302.png)
+make_occ_slider_map("EPFU", "Big brown bat")
+```
 
-![](images/clipboard-1672079282.png)
+![](Figures/DOccupancy/fig1_covariate_effects_EPFU.png)![](Figures/DOccupancy/fig5_detection_by_year_EPFU.png)
 
-![](images/clipboard-2775641908.png)
+## Spotted bat (*Euderma maculatum*)
 
-![](images/clipboard-1239408147.png)
+![](Figures/DOccupancy/fig2_bc_dynamics_EUMA.png)![](Figures/DOccupancy/fig4_regional_dynamics_EUMA.png)
 
-![](images/clipboard-3065992537.png)
+```{r}
+#| label: fig-occ-slider-EUMA
+#| fig-cap: "Spotted bat (EUMA): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| echo: false
+#| warning: false
+#| message: false
 
-![](images/clipboard-1514866696.png)
+make_occ_slider_map("EUMA", "Spotted bat")
+```
 
-![](images/clipboard-3067857120.png)
+![](Figures/DOccupancy/fig1_covariate_effects_EUMA.png)
 
-![](images/clipboard-3015708547.png)
+![](Figures/DOccupancy/fig5_detection_by_year_EUMA.png)
 
-![](images/clipboard-1028350744.png)
+## Easter red bat (*Lasiurus borealis*)
 
-![](images/clipboard-320766212.png)
+![](Figures/DOccupancy/fig2_bc_dynamics_LABO.png)
 
-![](images/clipboard-3987199258.png)
+![](Figures/DOccupancy/fig4_regional_dynamics_LABO.png)
 
-![](images/clipboard-907181628.png)
+```{r}
+#| label: fig-occ-slider-LABO
+#| fig-cap: "Eastern red bat (LABO): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| echo: false
+#| warning: false
+#| message: false
 
-![](images/clipboard-3832638027.png)
+make_occ_slider_map("LABO", "Eastern red bat")
+```
 
-![](images/clipboard-2996506328.png)
+![](Figures/DOccupancy/fig1_covariate_effects_LABO.png)
 
-![](images/clipboard-344941766.png)
+![](Figures/DOccupancy/fig5_detection_by_year_LABO.png)
 
-![](images/clipboard-3743129967.png)
+## Hoary Bat (*Lasiurus cinereus*)
 
-![](images/clipboard-1412688318.png)
+![](Figures/DOccupancy/fig2_bc_dynamics_LACI.png)![](Figures/DOccupancy/fig4_regional_dynamics_LACI.png)
 
-![](images/clipboard-2126305700.png)
+```{r}
+#| label: fig-occ-slider-LACI
+#| fig-cap: "Hoary bat (LACI): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| echo: false
+#| warning: false
+#| message: false
 
-![](images/clipboard-2549826261.png)
+make_occ_slider_map("LACI", "Hoary bat")
+```
 
-![](images/clipboard-510851895.png)
+![](Figures/DOccupancy/fig1_covariate_effects_LACI.png)
 
-![](images/clipboard-1650968393.png)
+![](Figures/DOccupancy/fig5_detection_by_year_LACI.png)
 
-![](images/clipboard-1456309094.png)
+## Silver-haired bat (*Lasionycteris noctivagans*)
 
-![](images/clipboard-3081408464.png)
+![](Figures/DOccupancy/fig2_bc_dynamics_LANO.png)![](Figures/DOccupancy/fig4_regional_dynamics_LANO.png)
 
-![](images/clipboard-3203452304.png)
+```{r}
+#| label: fig-occ-slider-LANO
+#| fig-cap: "Silver-haired bat (LANO): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| echo: false
+#| warning: false
+#| message: false
 
-![](images/clipboard-232071095.png)
+make_occ_slider_map("LANO", "Silver-haired bat")
+```
 
-![](images/clipboard-418757452.png)
+![](Figures/DOccupancy/fig1_covariate_effects_LANO.png)
 
-![](images/clipboard-1581575649.png)
+![](Figures/DOccupancy/fig5_detection_by_year_LANO.png)
 
-![](images/clipboard-1840991189.png)
+## California Myotis (*Myotis californicus*)
 
-![](images/clipboard-2424367020.png)
+![](Figures/DOccupancy/fig2_bc_dynamics_MYCA.png)![](Figures/DOccupancy/fig4_regional_dynamics_MYCA.png)
 
-![](images/clipboard-1971018695.png)
+```{r}
+#| label: fig-occ-slider-MYCA
+#| fig-cap: "California Myotis (MYCA): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| echo: false
+#| warning: false
+#| message: false
 
-![](images/clipboard-129444257.png)
+make_occ_slider_map("MYCA", "California Myotis")
+```
 
-![](images/clipboard-3614334769.png)
+![](Figures/DOccupancy/fig1_covariate_effects_MYCA.png)
 
-![](images/clipboard-691748644.png)
+![](Figures/DOccupancy/fig5_detection_by_year_MYCA.png)
 
-![](images/clipboard-1913924916.png)
+## Western small-footed Myotis (*Myotis ciliolabrum*)
 
-![](images/clipboard-504246845.png)
+![](Figures/DOccupancy/fig2_bc_dynamics_MYCI.png)![](Figures/DOccupancy/fig4_regional_dynamics_MYCI.png)
 
-![](images/clipboard-2023445701.png)
+```{r}
+#| label: fig-occ-slider-MYCI
+#| fig-cap: "Western small-footed Myotis (MYCI): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| echo: false
+#| warning: false
+#| message: false
 
-![](images/clipboard-1719421298.png)
+make_occ_slider_map("MYCI", "Western small-footed Myotis")
+```
 
-![](images/clipboard-3590729106.png)
+![](Figures/DOccupancy/fig1_covariate_effects_MYCI.png)
 
-![](images/clipboard-1237590987.png)
+![](Figures/DOccupancy/fig5_detection_by_year_MYCI.png)
 
-![](images/clipboard-1282248688.png)
+## Western long-eared Myotis (*Myotis evotis*)
 
-![](images/clipboard-556168714.png)
+![](Figures/DOccupancy/fig2_bc_dynamics_MYEV.png) ![](Figures/DOccupancy/fig4_regional_dynamics_MYEV.png)
 
-![](images/clipboard-4101332239.png)
+```{r}
+#| label: fig-occ-slider-MYEV
+#| fig-cap: "Western long-eared Myotis (MYEV): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| echo: false
+#| warning: false
+#| message: false
 
-![](images/clipboard-1844903765.png)
+make_occ_slider_map("MYEV", "Western long-eared Myotis")
+```
 
-![](images/clipboard-1079634519.png)
+![](Figures/DOccupancy/fig1_covariate_effects_MYEV.png)
 
-![](images/clipboard-4094497022.png)
+## ![](Figures/DOccupancy/fig5_detection_by_year_MYEV.png)Little brown Myotis (*Myotis lucifugus*) ![](Figures/DOccupancy/fig2_bc_dynamics_MYLU.png) ![](Figures/DOccupancy/fig4_regional_dynamics_MYLU.png)
 
-![](images/clipboard-865099794.png)
+```{r}
+#| label: fig-occ-slider-MYLU
+#| fig-cap: "Little brown Myotis (MYLU): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| echo: false
+#| warning: false
+#| message: false
 
-![](images/clipboard-4088300998.png)
+make_occ_slider_map("MYLU", "Little brown Myotis")
+```
 
-![](images/clipboard-976697193.png)
+![](Figures/DOccupancy/fig1_covariate_effects_MYLU.png)
 
-![](images/clipboard-1099412095.png)
+## ![](Figures/DOccupancy/fig5_detection_by_year_MYLU.png) Northern Myotis (*Myotis septentrionalis*) ![](Figures/DOccupancy/fig2_bc_dynamics_MYSE.png) ![](Figures/DOccupancy/fig4_regional_dynamics_MYSE.png)
 
-![](images/clipboard-817490926.png)
+```{r}
+#| label: fig-occ-slider-MYSE
+#| fig-cap: "Northern Myotis (MYSE): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| echo: false
+#| warning: false
+#| message: false
 
-![](images/clipboard-2183359796.png)
+make_occ_slider_map("MYSE", "Northern Myotis")
+```
 
-![](images/clipboard-2312598002.png)
+![](Figures/DOccupancy/fig1_covariate_effects_MYSE.png)
 
-![](images/clipboard-1262511847.png)
+## ![](Figures/DOccupancy/fig5_detection_by_year_MYSE.png) Fringed Myotis (*Myotis thysanodes*) ![](Figures/DOccupancy/fig2_bc_dynamics_MYTH.png) ![](Figures/DOccupancy/fig4_regional_dynamics_MYTH.png)
 
-![](images/clipboard-3386870832.png)
+```{r}
+#| label: fig-occ-slider-MYTH
+#| fig-cap: "Fringed Myotis (MYTH): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| echo: false
+#| warning: false
+#| message: false
 
-::: {.content-visible when-format="pdf"}
+make_occ_slider_map("MYTH", "Fringed Myotis")
+```
+
+![](Figures/DOccupancy/fig1_covariate_effects_MYTH.png)
+
+## ![](Figures/DOccupancy/fig5_detection_by_year_MYTH.png) Long-legged Myotis (*Myotis volans*) ![](Figures/DOccupancy/fig2_bc_dynamics_MYVO.png) ![](Figures/DOccupancy/fig4_regional_dynamics_MYVO.png)
+
+```{r}
+#| label: fig-occ-slider-MYVO
+#| fig-cap: "Long=legged Myotis (MYVO): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| echo: false
+#| warning: false
+#| message: false
+
+make_occ_slider_map("MYVO", "Long-legged Myotis")
+```
+
+![](Figures/DOccupancy/fig1_covariate_effects_MYVO.png)
+
+## ![](Figures/DOccupancy/fig5_detection_by_year_MYVO.png) Yuma Myotis (*Myotis yumanensis*) ![](Figures/DOccupancy/fig2_bc_dynamics_MYYU.png) ![](Figures/DOccupancy/fig4_regional_dynamics_MYYU.png)
+
+```{r}
+#| label: fig-occ-slider-MYYU
+#| fig-cap: "Yuma Myotis (MYYU): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| echo: false
+#| warning: false
+#| message: false
+
+make_occ_slider_map("MYYU", "Yuma Myotis")
+```
+
+![](Figures/DOccupancy/fig1_covariate_effects_MYYU.png)
+
+![](Figures/DOccupancy/fig5_detection_by_year_MYYU.png)
+
 # Literature Cited
-:::

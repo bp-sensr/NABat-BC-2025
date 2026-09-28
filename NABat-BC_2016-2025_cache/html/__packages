@@ -19,3 +19,4 @@ leaflet.extras
 kableExtra
 gt
 RColorBrewer
+readxl
