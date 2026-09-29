@@ -209,8 +209,6 @@ if (knitr::pandoc_to("html")) {
 
 ![](Figures/DOccupancy/fig2_bc_dynamics_EUMA.png)![](Figures/DOccupancy/fig4_regional_dynamics_EUMA.png)
 
-`{r} #| label: fig-occ-slider-EUMA #| fig-cap: "Spotted bat (EUMA): probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)" #| echo: false #| warning: false #| message: false}`
-
 ![](Figures/DOccupancy/fig1_covariate_effects_EUMA.png)
 
 ![](Figures/DOccupancy/fig5_detection_by_year_EUMA.png)
@@ -221,8 +219,6 @@ if (knitr::pandoc_to("html")) {
 
 ![](Figures/DOccupancy/fig4_regional_dynamics_LABO.png)
 
-`{r} #| label: fig-occ-slider-LABO #| fig-cap: "Eastern red bat (LABO): probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)" #| echo: false #| warning: false #| message: false}`
-
 ![](Figures/DOccupancy/fig1_covariate_effects_LABO.png)
 
 ![](Figures/DOccupancy/fig5_detection_by_year_LABO.png)
@@ -231,8 +227,6 @@ if (knitr::pandoc_to("html")) {
 
 ![](Figures/DOccupancy/fig2_bc_dynamics_LACI.png)![](Figures/DOccupancy/fig4_regional_dynamics_LACI.png)
 
-`{r} #| label: fig-occ-slider-LACI #| fig-cap: "Hoary bat (LACI): probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)" #| echo: false #| warning: false #| message: false}`
-
 ![](Figures/DOccupancy/fig1_covariate_effects_LACI.png)
 
 ![](Figures/DOccupancy/fig5_detection_by_year_LACI.png)
@@ -240,8 +234,6 @@ if (knitr::pandoc_to("html")) {
 ## Silver-haired bat (*Lasionycteris noctivagans*)
 
 ![](Figures/DOccupancy/fig2_bc_dynamics_LANO.png)![](Figures/DOccupancy/fig4_regional_dynamics_LANO.png)
-
-`{r} #| label: fig-occ-slider-LANO #| fig-cap: "Silver-haired bat (LANO):probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)" #| echo: false #| warning: false #| message: false}`
 
 ![](Figures/DOccupancy/fig1_covariate_effects_LANO.png)
 

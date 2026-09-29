@@ -13,3 +13,5 @@ Archive/
 #specific data
 /Data/Analyzed/MapDataSummary.csv
 /Data/Analyzed/MapDataSummary.rds
+
+/AppendixA_test.qmd
