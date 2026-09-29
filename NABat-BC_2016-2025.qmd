@@ -1205,6 +1205,14 @@ make_occ_slider_map <- function(sp_code, sp_name,
     htmlwidgets::onRender(slider_js, data = list(years = years))
 }
 
+#code to render based on html or pdf
+render_occ_map <- function(sp_code, sp_name, path = "Figures/DOccupancy") {
+  if (knitr::pandoc_to("html")) {
+    make_occ_slider_map(sp_code, sp_name)
+  } else {
+    knitr::include_graphics(file.path(path, paste0("fig7_site_map_by_year_", sp_code, ".png")))
+  }
+}
 ```
 
 ## Pallid Bat (*Antrozous pallidus)*
@@ -1217,8 +1225,27 @@ make_occ_slider_map <- function(sp_code, sp_name,
 #| echo: false
 #| warning: false
 #| message: false
+ANPA <- make_occ_slider_map("ANPA", "Pallid bat")
 
-make_occ_slider_map("ANPA", "Pallid bat")
+if (knitr::pandoc_to("html")) {
+  ANPA
+} else {
+  dir.create(file.path(getwd(), "Figures", "AppendixA"), recursive = TRUE, showWarnings = FALSE)
+  map_file <- file.path(getwd(), "Figures", "AppendixA", "SiteOccupancy_ANPA.png")
+  tryCatch({
+    mapview::mapshot2(
+      ANPA,
+      file    = map_file,
+      delay   = 5,
+      vwidth  = 900,
+      vheight = 1100
+    )
+  }, error = function(e) {
+    message("mapshot2 failed: ", e$message)
+  })
+  knitr::include_graphics(map_file)
+}
+
 
 ```
 
@@ -1235,7 +1262,7 @@ make_occ_slider_map("ANPA", "Pallid bat")
 #| warning: false
 #| message: false
 
-make_occ_slider_map("COTO", "Townsend's big-eared bat")
+render_occ_map("COTO", "Townsend's big-eared bat")
 ```
 
 ![](Figures/DOccupancy/fig1_covariate_effects_COTO.png)![](Figures/DOccupancy/fig5_detection_by_year_COTO.png)
@@ -1250,7 +1277,7 @@ make_occ_slider_map("COTO", "Townsend's big-eared bat")
 #| echo: false
 #| warning: false
 #| message: false
-make_occ_slider_map("EPFU", "Big brown bat")
+render_occ_map("EPFU", "Big brown bat")
 
 ```
 
@@ -1267,7 +1294,7 @@ make_occ_slider_map("EPFU", "Big brown bat")
 #| warning: false
 #| message: false
 
-make_occ_slider_map("EUMA", "Spotted bat")
+render_occ_map("EUMA", "Spotted bat")
 ```
 
 ![](Figures/DOccupancy/fig1_covariate_effects_EUMA.png)
@@ -1287,7 +1314,7 @@ make_occ_slider_map("EUMA", "Spotted bat")
 #| warning: false
 #| message: false
 
-make_occ_slider_map("LABO", "Eastern red bat")
+render_occ_map("LABO", "Eastern red bat")
 ```
 
 ![](Figures/DOccupancy/fig1_covariate_effects_LABO.png)
@@ -1305,7 +1332,7 @@ make_occ_slider_map("LABO", "Eastern red bat")
 #| warning: false
 #| message: false
 
-make_occ_slider_map("LACI", "Hoary bat")
+render_occ_map("LACI", "Hoary bat")
 ```
 
 ![](Figures/DOccupancy/fig1_covariate_effects_LACI.png)
@@ -1323,7 +1350,7 @@ make_occ_slider_map("LACI", "Hoary bat")
 #| warning: false
 #| message: false
 
-make_occ_slider_map("LANO", "Silver-haired bat")
+render_occ_map("LANO", "Silver-haired bat")
 ```
 
 ![](Figures/DOccupancy/fig1_covariate_effects_LANO.png)
@@ -1341,7 +1368,7 @@ make_occ_slider_map("LANO", "Silver-haired bat")
 #| warning: false
 #| message: false
 
-make_occ_slider_map("MYCA", "California Myotis")
+render_occ_map("MYCA", "California Myotis")
 ```
 
 ![](Figures/DOccupancy/fig1_covariate_effects_MYCA.png)
@@ -1359,7 +1386,7 @@ make_occ_slider_map("MYCA", "California Myotis")
 #| warning: false
 #| message: false
 
-make_occ_slider_map("MYCI", "Western small-footed Myotis")
+render_occ_map("MYCI", "Western small-footed Myotis")
 ```
 
 ![](Figures/DOccupancy/fig1_covariate_effects_MYCI.png)
@@ -1377,12 +1404,14 @@ make_occ_slider_map("MYCI", "Western small-footed Myotis")
 #| warning: false
 #| message: false
 
-make_occ_slider_map("MYEV", "Western long-eared Myotis")
+render_occ_map("MYEV", "Western long-eared Myotis")
 ```
 
 ![](Figures/DOccupancy/fig1_covariate_effects_MYEV.png)
 
-## ![](Figures/DOccupancy/fig5_detection_by_year_MYEV.png)Little brown Myotis (*Myotis lucifugus*) ![](Figures/DOccupancy/fig2_bc_dynamics_MYLU.png) ![](Figures/DOccupancy/fig4_regional_dynamics_MYLU.png)
+![](Figures/DOccupancy/fig5_detection_by_year_MYEV.png)
+
+## Little brown Myotis (*Myotis lucifugus*) ![](Figures/DOccupancy/fig2_bc_dynamics_MYLU.png) ![](Figures/DOccupancy/fig4_regional_dynamics_MYLU.png)
 
 ```{r}
 #| label: fig-occ-slider-MYLU
@@ -1391,12 +1420,14 @@ make_occ_slider_map("MYEV", "Western long-eared Myotis")
 #| warning: false
 #| message: false
 
-make_occ_slider_map("MYLU", "Little brown Myotis")
+render_occ_map("MYLU", "Little brown Myotis")
 ```
 
 ![](Figures/DOccupancy/fig1_covariate_effects_MYLU.png)
 
-## ![](Figures/DOccupancy/fig5_detection_by_year_MYLU.png) Northern Myotis (*Myotis septentrionalis*) ![](Figures/DOccupancy/fig2_bc_dynamics_MYSE.png) ![](Figures/DOccupancy/fig4_regional_dynamics_MYSE.png)
+![](Figures/DOccupancy/fig5_detection_by_year_MYLU.png)
+
+## Northern Myotis (*Myotis septentrionalis*) ![](Figures/DOccupancy/fig2_bc_dynamics_MYSE.png) ![](Figures/DOccupancy/fig4_regional_dynamics_MYSE.png)
 
 ```{r}
 #| label: fig-occ-slider-MYSE
@@ -1405,12 +1436,14 @@ make_occ_slider_map("MYLU", "Little brown Myotis")
 #| warning: false
 #| message: false
 
-make_occ_slider_map("MYSE", "Northern Myotis")
+render_occ_map("MYSE", "Northern Myotis")
 ```
 
 ![](Figures/DOccupancy/fig1_covariate_effects_MYSE.png)
 
-## ![](Figures/DOccupancy/fig5_detection_by_year_MYSE.png) Fringed Myotis (*Myotis thysanodes*) ![](Figures/DOccupancy/fig2_bc_dynamics_MYTH.png) ![](Figures/DOccupancy/fig4_regional_dynamics_MYTH.png)
+![](Figures/DOccupancy/fig5_detection_by_year_MYSE.png)
+
+## Fringed Myotis (*Myotis thysanodes*) ![](Figures/DOccupancy/fig2_bc_dynamics_MYTH.png) ![](Figures/DOccupancy/fig4_regional_dynamics_MYTH.png)
 
 ```{r}
 #| label: fig-occ-slider-MYTH
@@ -1419,12 +1452,14 @@ make_occ_slider_map("MYSE", "Northern Myotis")
 #| warning: false
 #| message: false
 
-make_occ_slider_map("MYTH", "Fringed Myotis")
+render_occ_map("MYTH", "Fringed Myotis")
 ```
 
 ![](Figures/DOccupancy/fig1_covariate_effects_MYTH.png)
 
-## ![](Figures/DOccupancy/fig5_detection_by_year_MYTH.png) Long-legged Myotis (*Myotis volans*) ![](Figures/DOccupancy/fig2_bc_dynamics_MYVO.png) ![](Figures/DOccupancy/fig4_regional_dynamics_MYVO.png)
+![](Figures/DOccupancy/fig5_detection_by_year_MYTH.png)
+
+## Long-legged Myotis (*Myotis volans*) ![](Figures/DOccupancy/fig2_bc_dynamics_MYVO.png) ![](Figures/DOccupancy/fig4_regional_dynamics_MYVO.png)
 
 ```{r}
 #| label: fig-occ-slider-MYVO
@@ -1433,12 +1468,14 @@ make_occ_slider_map("MYTH", "Fringed Myotis")
 #| warning: false
 #| message: false
 
-make_occ_slider_map("MYVO", "Long-legged Myotis")
+render_occ_map("MYVO", "Long-legged Myotis")
 ```
 
 ![](Figures/DOccupancy/fig1_covariate_effects_MYVO.png)
 
-## ![](Figures/DOccupancy/fig5_detection_by_year_MYVO.png) Yuma Myotis (*Myotis yumanensis*) ![](Figures/DOccupancy/fig2_bc_dynamics_MYYU.png) ![](Figures/DOccupancy/fig4_regional_dynamics_MYYU.png)
+![](Figures/DOccupancy/fig5_detection_by_year_MYVO.png)
+
+## Yuma Myotis (*Myotis yumanensis*) ![](Figures/DOccupancy/fig2_bc_dynamics_MYYU.png) ![](Figures/DOccupancy/fig4_regional_dynamics_MYYU.png)
 
 ```{r}
 #| label: fig-occ-slider-MYYU
@@ -1447,7 +1484,7 @@ make_occ_slider_map("MYVO", "Long-legged Myotis")
 #| warning: false
 #| message: false
 
-make_occ_slider_map("MYYU", "Yuma Myotis")
+render_occ_map("MYYU", "Yuma Myotis")
 ```
 
 ![](Figures/DOccupancy/fig1_covariate_effects_MYYU.png)
