@@ -813,7 +813,7 @@ In 2025, all species previously documented in BC were detected. The manually ver
 ```{r}
 #| echo: false
 #| eval: true
-#| cache: true
+#| cache: false
 #| warning: false
 #| message: false
 #| include: true
