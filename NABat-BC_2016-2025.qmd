@@ -359,8 +359,10 @@ for (i in seq_len(nrow(site_list))) {
 }
 
 # ── 6. Load spatial data ───────────────────────────────────────────────────────
-transects_sf <- st_read("Data/Mapping/transects_merged.shp", quiet = TRUE)
-transects_sf <- st_transform(transects_sf, crs = 4326)
+transects_sf <- st_read("Data/Mapping/transects_merged.shp", quiet = TRUE) |>
+  st_zm() |>                                   # drop any Z/M values Leaflet can't use
+  st_transform(crs = 4326)
+transects_sf <- transects_sf[!st_is_empty(transects_sf), ] 
 
 regions <- st_read("Data/Mapping/BC-SEAK Hub Regions Mar 2025.shp", quiet = TRUE)
 regions <- st_transform(regions, crs = 4326)
@@ -1048,116 +1050,161 @@ The BC NABat program has yielded a large and robust acoustic dataset that provid
 Species and region specific dynamic occupancy results
 
 ```{r}
-#| label: make interactive occupancy maps
+#| label: make-interactive-occupancy-maps
 #| include: false
-#| echo: false
-#| eval: true
 #| warning: false
 #| message: false
 
 library(dplyr)
-library(plotly)
+library(leaflet)
 old_json_opts <- options(htmlwidgets.TOJSON_ARGS = NULL)
 
+# ---- helper: one SVG marker per point, embedded as a data URI ----
+svg_icon <- function(shape, fill, stroke, px) {
+  body <- ifelse(
+    shape == "triangle",
+    sprintf("<polygon points='8,1.5 14.5,14 1.5,14' fill='%s' stroke='%s' stroke-width='1.2'/>", fill, stroke),
+    sprintf("<circle cx='8' cy='8' r='6.3' fill='%s' stroke='%s' stroke-width='1.2'/>", fill, stroke)
+  )
+  svg <- sprintf("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' width='%d' height='%d'>%s</svg>",
+                 px, px, body)
+  vapply(svg, function(s) paste0("data:image/svg+xml;base64,", jsonlite::base64_enc(s)),
+         character(1), USE.NAMES = FALSE)
+}
+
+# ---- JavaScript for the year slider ----
+slider_js <- "
+function(el, x, data) {
+  var map = this, years = data.years, lm = map.layerManager;
+  var slider, lab, btn, timer = null;
+
+  function show(i) {
+    years.forEach(function(y, j) {
+      var g = lm.getLayerGroup(String(y), false);
+      if (!g) return;
+      if (j === i) { if (!map.hasLayer(g)) map.addLayer(g); }
+      else if (map.hasLayer(g)) map.removeLayer(g);
+    });
+    lab.innerHTML = 'Year: <b>' + years[i] + '</b>';
+    slider.value = i;
+  }
+
+  var ctrl = L.control({position: 'bottomleft'});
+  ctrl.onAdd = function() {
+    var div = L.DomUtil.create('div', 'year-slider');
+    div.style.cssText = 'background:rgba(255,255,255,.92);padding:8px 12px;border-radius:6px;' +
+                        'box-shadow:0 1px 4px rgba(0,0,0,.3);font:14px sans-serif;';
+    lab = L.DomUtil.create('div', '', div);
+    var row = L.DomUtil.create('div', '', div);
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:4px;';
+    btn = L.DomUtil.create('button', '', row);
+    btn.textContent = '\u25B6';
+    btn.style.cssText = 'border:1px solid #999;background:#fff;border-radius:4px;cursor:pointer;';
+    slider = L.DomUtil.create('input', '', row);
+    slider.type = 'range'; slider.min = 0; slider.max = years.length - 1; slider.step = 1;
+    slider.style.width = '220px';
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.disableScrollPropagation(div);
+    slider.addEventListener('input', function() { show(+this.value); });
+    btn.addEventListener('click', function() {
+      if (timer) { clearInterval(timer); timer = null; btn.textContent = '\u25B6'; }
+      else {
+        btn.textContent = '\u275A\u275A';
+        timer = setInterval(function() { show((+slider.value + 1) % years.length); }, 1200);
+      }
+    });
+    return div;
+  };
+  ctrl.addTo(map);
+  show(years.length - 1);   // open on the most recent year
+}"
+
+# ---- main function ----
 make_occ_slider_map <- function(sp_code, sp_name,
-                                path = "data") {
+                                path = "Figures/DOccupancy") {
   
-  occ <- read.csv(file.path("Figures/DOccupancy/", paste0("site_year_occupancy_", sp_code, ".csv")))
+  occ <- read.csv(file.path(path, paste0("site_year_occupancy_", sp_code, ".csv")))
   
   pal_hex <- RColorBrewer::brewer.pal(9, "OrRd")
-  pal_fun <- scales::col_numeric(pal_hex, domain = c(0, 1))
+  pal_fun <- colorNumeric(pal_hex, domain = c(0, 1))
   
   occ_plot <- occ |>
     mutate(
       surveyed   = as.logical(surveyed),
       detected   = suppressWarnings(as.numeric(detected)),
-      p_occupied = suppressWarnings(as.numeric(p_occupied)),
-      status = case_when(
-        !surveyed     ~ "Not surveyed",
-        detected == 1 ~ "Detected",
-        TRUE          ~ "Not detected"
-      ),
-      symbol = ifelse(status == "Not detected", "triangle-up", "circle"),
-      fill   = ifelse(surveyed, pal_fun(pmin(pmax(p_occupied, 0), 1)), "rgba(0,0,0,0)"),
-      line   = ifelse(surveyed, "#4d4d4d", "#9e9e9e"),
-      size   = ifelse(surveyed, 12, 6),
+      p_occupied = suppressWarnings(as.numeric(p_occupied))
+    ) |>
+    group_by(site) |>
+    mutate(ever_detected = any(detected == 1, na.rm = TRUE)) |>
+    ungroup() |>
+    mutate(
+      shape  = ifelse(ever_detected, "circle", "triangle"),
+      fill   = ifelse(surveyed,
+                      pal_fun(round(pmin(pmax(p_occupied, 0), 1) * 20) / 20),
+                      "none"),
+      stroke = ifelse(surveyed, "#4d4d4d", "#8c8c8c"),
+      px     = ifelse(surveyed, 16L, 10L),
+      icon_url = svg_icon(shape, fill, stroke, px),
       hover  = paste0(
         "<b>", site, "</b><br>", region,
+        "<br>", ifelse(ever_detected, "Detected at this site (2017\u20132025)",
+                       "Never detected at this site"),
         "<br>Year: ", year,
-        "<br>", status,
         ifelse(surveyed,
-               paste0(" (", n_visits, " visits)",
+               paste0(" \u2014 ", n_visits, " visits, ",
+                      ifelse(detected == 1, "detected", "not detected"),
                       "<br>P(occupied): ", sprintf("%.2f", p_occupied)),
-               ""),
+               " \u2014 not surveyed"),
         "<br>\u03c8 expected: ",
         sprintf("%.2f [%.2f\u2013%.2f]", psi_expected, psi_expected_lo95, psi_expected_hi95)
       )
     ) |>
-    arrange(year, site)
+    arrange(year, surveyed, ever_detected)   # circles drawn on top of triangles
   
-  # point placed off-map, used only to draw legend entries / colourbar
-  off_lat <- 0; off_lon <- 0
+  years <- sort(unique(occ_plot$year))
   
-  p <- plot_ly(height = 720) |>
-    # animated site layer
-    add_trace(
-      data = occ_plot, type = "scattergeo", mode = "markers",
-      lat = ~lat, lon = ~long, frame = ~year, ids = ~site,
-      text = ~hover, hoverinfo = "text",
-      marker = list(
-        symbol = ~symbol, color = ~I(fill), size = ~size, opacity = 0.95,
-        line = list(color = ~I(line), width = 1)
-      ),
-      showlegend = FALSE
-    ) |>
-    # colourbar
-    add_trace(
-      type = "scattergeo", mode = "markers",
-      lat = off_lat, lon = off_lon, hoverinfo = "skip", showlegend = FALSE,
-      marker = list(
-        color = 0, cmin = 0, cmax = 1,
-        colorscale = list(seq(0, 1, length.out = length(pal_hex)), pal_hex),
-        showscale = TRUE,
-        colorbar = list(title = list(text = "P(occupied)"), len = 0.45, y = 0.35,
-                        tickvals = seq(0, 1, 0.25))
+  m <- leaflet(height = 720) |>
+    addProviderTiles(providers$Esri.WorldGrayCanvas)|>
+    fitBounds(-139.1, 48.3, -114.0, 60.0)  
+  
+  # one layer group per year; the slider switches between them
+  for (yr in years) {
+    d <- occ_plot[occ_plot$year == yr, ]
+    m <- m |>
+      addMarkers(
+        data = d, lng = ~long, lat = ~lat, group = as.character(yr),
+        icon = icons(iconUrl = d$icon_url,
+                     iconWidth = d$px, iconHeight = d$px,
+                     iconAnchorX = d$px / 2, iconAnchorY = d$px / 2),
+        label = lapply(d$hover, htmltools::HTML)
       )
-    ) |>
-    # shape legend
-    add_trace(type = "scattergeo", mode = "markers", lat = off_lat, lon = off_lon,
-              name = "Detected", hoverinfo = "skip",
-              marker = list(symbol = "circle", size = 11, color = "#bdbdbd",
-                            line = list(color = "#4d4d4d", width = 1))) |>
-    add_trace(type = "scattergeo", mode = "markers", lat = off_lat, lon = off_lon,
-              name = "Not detected", hoverinfo = "skip",
-              marker = list(symbol = "triangle-up", size = 11, color = "#bdbdbd",
-                            line = list(color = "#4d4d4d", width = 1))) |>
-    add_trace(type = "scattergeo", mode = "markers", lat = off_lat, lon = off_lon,
-              name = "Not surveyed", hoverinfo = "skip",
-              marker = list(symbol = "circle", size = 7, color = "rgba(0,0,0,0)",
-                            line = list(color = "#9e9e9e", width = 1))) |>
-    layout(
-      title = list(text = paste0("<b>", sp_code, " \u2014 ", sp_name,
-                                 ": probability of occupancy by year</b>"),
-                   x = 0.02),
-      geo = list(
-        scope = "north america", resolution = 50,
-        projection = list(type = "mercator"),
-        showland = TRUE,  landcolor  = "#f7f7f7",
-        showocean = TRUE, oceancolor = "#e8f0f5",
-        showlakes = TRUE, lakecolor  = "#e8f0f5",
-        showcountries = TRUE, countrycolor = "#9e9e9e",
-        showsubunits  = TRUE, subunitcolor = "#c8c8c8",
-        lonaxis = list(range = range(occ_plot$long) + c(-1, 1)),
-        lataxis = list(range = range(occ_plot$lat)  + c(-0.5, 0.5))
-      ),
-      legend = list(x = 1.02, y = 0.9)
-    ) |>
-    animation_opts(frame = 900, transition = 300, redraw = TRUE) |>
-    animation_slider(currentvalue = list(prefix = "Year: ", font = list(size = 16))) |>
-    animation_button(label = "Play")
+  }
   
-  p
+  # ---- legends ----
+  key <- function(imgs, txt) {
+    sprintf("<div style='display:flex;align-items:center;gap:6px;margin:2px 0;'>%s %s</div>",
+            imgs, txt)
+  }
+  img <- function(shape, fill, stroke, px) {
+    sprintf("<img src='%s' width='%d' height='%d'>",
+            svg_icon(shape, fill, stroke, px), px, px)
+  }
+  shape_legend <- paste0(
+    "<div style='font:13px sans-serif;'>",
+    key(img("circle",   "#bdbdbd", "#4d4d4d", 16L), "Detected (any year)"),
+    key(img("triangle", "#bdbdbd", "#4d4d4d", 16L), "Never detected"),
+    "</div>"
+  )
+  
+  m |>
+    addControl(html = paste0("<b style='font:14px sans-serif;'>", sp_code, " \u2014 ", sp_name, "</b>"),
+               position = "topright") |>
+    addLegend(position = "bottomright", pal = pal_fun, values = c(0, 1),
+              title = "P(occupied)", opacity = 1) |>
+    addControl(html = shape_legend, position = "bottomright") |>
+    htmlwidgets::onRender(slider_js, data = list(years = years))
 }
+
 ```
 
 ## Pallid Bat (*Antrozous pallidus)*
@@ -1166,12 +1213,13 @@ make_occ_slider_map <- function(sp_code, sp_name,
 
 ```{r}
 #| label: fig-occ-slider-anpa
-#| fig-cap: "Pallid bat (ANPA): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| fig-cap: "Pallid bat (ANPA): probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)"
 #| echo: false
 #| warning: false
 #| message: false
 
 make_occ_slider_map("ANPA", "Pallid bat")
+
 ```
 
 ![](Figures/DOccupancy/fig1_covariate_effects_ANPA.png)![](Figures/DOccupancy/fig5_detection_by_year_ANPA.png)
@@ -1182,7 +1230,7 @@ make_occ_slider_map("ANPA", "Pallid bat")
 
 ```{r}
 #| label: fig-occ-slider-COTO
-#| fig-cap: "Townsend's big-eared bat (COTO): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| fig-cap: "Townsend's big-eared bat (COTO): probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1198,12 +1246,12 @@ make_occ_slider_map("COTO", "Townsend's big-eared bat")
 
 ```{r}
 #| label: fig-occ-slider-EPFU
-#| fig-cap: "Big brown bat (EPFU): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| fig-cap: "Big brown bat (EPFU):probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)"
 #| echo: false
 #| warning: false
 #| message: false
-
 make_occ_slider_map("EPFU", "Big brown bat")
+
 ```
 
 ![](Figures/DOccupancy/fig1_covariate_effects_EPFU.png)![](Figures/DOccupancy/fig5_detection_by_year_EPFU.png)
@@ -1214,7 +1262,7 @@ make_occ_slider_map("EPFU", "Big brown bat")
 
 ```{r}
 #| label: fig-occ-slider-EUMA
-#| fig-cap: "Spotted bat (EUMA): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| fig-cap: "Spotted bat (EUMA): probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1234,7 +1282,7 @@ make_occ_slider_map("EUMA", "Spotted bat")
 
 ```{r}
 #| label: fig-occ-slider-LABO
-#| fig-cap: "Eastern red bat (LABO): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| fig-cap: "Eastern red bat (LABO): probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1252,7 +1300,7 @@ make_occ_slider_map("LABO", "Eastern red bat")
 
 ```{r}
 #| label: fig-occ-slider-LACI
-#| fig-cap: "Hoary bat (LACI): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| fig-cap: "Hoary bat (LACI): probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1270,7 +1318,7 @@ make_occ_slider_map("LACI", "Hoary bat")
 
 ```{r}
 #| label: fig-occ-slider-LANO
-#| fig-cap: "Silver-haired bat (LANO): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| fig-cap: "Silver-haired bat (LANO):probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1288,7 +1336,7 @@ make_occ_slider_map("LANO", "Silver-haired bat")
 
 ```{r}
 #| label: fig-occ-slider-MYCA
-#| fig-cap: "California Myotis (MYCA): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| fig-cap: "California Myotis (MYCA):probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1306,7 +1354,7 @@ make_occ_slider_map("MYCA", "California Myotis")
 
 ```{r}
 #| label: fig-occ-slider-MYCI
-#| fig-cap: "Western small-footed Myotis (MYCI): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| fig-cap: "Western small-footed Myotis (MYCI):probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1324,7 +1372,7 @@ make_occ_slider_map("MYCI", "Western small-footed Myotis")
 
 ```{r}
 #| label: fig-occ-slider-MYEV
-#| fig-cap: "Western long-eared Myotis (MYEV): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| fig-cap: "Western long-eared Myotis (MYEV):probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1338,7 +1386,7 @@ make_occ_slider_map("MYEV", "Western long-eared Myotis")
 
 ```{r}
 #| label: fig-occ-slider-MYLU
-#| fig-cap: "Little brown Myotis (MYLU): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| fig-cap: "Little brown Myotis (MYLU):probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1352,7 +1400,7 @@ make_occ_slider_map("MYLU", "Little brown Myotis")
 
 ```{r}
 #| label: fig-occ-slider-MYSE
-#| fig-cap: "Northern Myotis (MYSE): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| fig-cap: "Northern Myotis (MYSE):probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1366,7 +1414,7 @@ make_occ_slider_map("MYSE", "Northern Myotis")
 
 ```{r}
 #| label: fig-occ-slider-MYTH
-#| fig-cap: "Fringed Myotis (MYTH): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| fig-cap: "Fringed Myotis (MYTH):probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1380,7 +1428,7 @@ make_occ_slider_map("MYTH", "Fringed Myotis")
 
 ```{r}
 #| label: fig-occ-slider-MYVO
-#| fig-cap: "Long=legged Myotis (MYVO): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| fig-cap: "Long=legged Myotis (MYVO): probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1394,7 +1442,7 @@ make_occ_slider_map("MYVO", "Long-legged Myotis")
 
 ```{r}
 #| label: fig-occ-slider-MYYU
-#| fig-cap: "Yuma Myotis (MYYU): probability of occupancy per site by year. Circles = detected that year; triangles = surveyed but not detected (colour is model inference); hollow grey = not surveyed."
+#| fig-cap: "Yuma Myotis (MYYU):probability of occupancy per site by year. Circles = detected; triangles = never detected (colour is model inference)"
 #| echo: false
 #| warning: false
 #| message: false
