@@ -257,7 +257,7 @@ model_covariates<- model_covariates %>%
 transect_covariates<- transect_covariates %>%
   mutate(
     Common_Name = species_names[sp],
-    Covariates = clean_covars(vars)
+    Covariates = vars
   ) %>%
   select(Common_Name, Species_Code = sp, Covariates)
 ```
@@ -1034,7 +1034,7 @@ Since transects are only conducted in roughly 50% of our grid cells on a typical
 #| message: false
 #| include: true
 #| label: tbl-cov-transects
-#| tbl-cap: Top-performing transect models selected by AIC-based stepwise selection. Definitions of covariates are: Temperature = nightly temperature (°C); Wind speed = nightly mean wind speed (km/h); RH = nightly mean relative humidity (%); Moon = proportion of the moon illuminated × proportion of the night the moon was above the horizon. 
+#| tbl-cap: "Top-performing transect models selected by AIC-based stepwise selection. Definitions of covariates are: Temperature = nightly temperature (°C); Wind speed = nightly mean wind speed (km/h); RH = nightly mean relative humidity (%); Moon = proportion of the moon illuminated × proportion of the night the moon was above the horizon." 
 #| fig.pos: 'H'
 
 kable(transect_covariates,
