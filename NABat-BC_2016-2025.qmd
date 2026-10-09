@@ -980,7 +980,7 @@ Stationary activity trends followed closely what was established by WCSC and Dr.
 #| message: false
 #| include: true
 #| label: tbl-cov
-#| tbl-cap: Top-performing stationary models selected by AIC-based stepwise selection. Definitions of covariates are: Temperature = nightly temperature (°C); Wind speed = nightly mean wind speed (km/h); RH = nightly mean relative humidity (%); dd = cumulative degree days above 10 °C since January 1; Moon = proportion of the moon illuminated × proportion of the night the moon was above the horizon; Clutter = distance (m) to the nearest clutter object; Nearby water = whether the detector was within 100 m of water (1 = yes, 0 = no); I(YearS²) = quadratic year term allowing for non-linear temporal trends. A * B denotes the main effects of A and B plus their interaction. 
+#| tbl-cap: "Top-performing stationary models selected by AIC-based stepwise selection. Definitions of covariates are: Temperature = nightly temperature (°C); Wind speed = nightly mean wind speed (km/h); RH = nightly mean relative humidity (%); dd = cumulative degree days above 10 °C since January 1; Moon = proportion of the moon illuminated × proportion of the night the moon was above the horizon; Clutter = distance (m) to the nearest clutter object; Nearby water = whether the detector was within 100 m of water (1 = yes, 0 = no); I(YearS²) = quadratic year term allowing for non-linear temporal trends. A * B denotes the main effects of A and B plus their interaction." 
 #| fig.pos: 'H'
 
 kable(model_covariates,
