@@ -57,13 +57,17 @@ nocite: '@*'
 #| cache: true
 #| include: false
 
-# #-------this chunk is just for reference to see how the summary tables were created
-# 
-# ##----Sampling effort summary----
-# # Set to FALSE to count stationary detector sites only (drops mobile transects)
+#-------this chunk is just for reference to see how the summary tables were created
+
+# #----Sampling effort summary----
+# #Set to FALSE to count stationary detector sites only (drops mobile transects)
 # include_transects <- TRUE
 # 
 # raw <- read_excel("Data/Raw/AllYearActivitybyNight_2016_2025_BC_withALLmetadata.xlsx", sheet = "Occupancy_NEAR")
+# 
+# bc_parks_cells <- c(986, 6202, 16426, 17706, 26170, 37274, 38442, 115322,
+#                     132650, 145578, 172090, 175354, 206394, 212906, 230186,
+#                     243562, 265749, 283586, 317428)
 # 
 # effort_nights <- raw %>%
 #   select(GRTS_Cell_ID, Quadrant, Night) %>%
@@ -72,21 +76,64 @@ nocite: '@*'
 #   distinct(GRTS_Cell_ID, Quadrant, Night, .keep_all = TRUE) %>%
 #   # Drop nights with bad detector clock dates (1963, 2000, 2001, 2015)
 #   filter(between(Year, 2016, 2025)) %>%
-#   { if (include_transects) . else filter(., Quadrant != "Transects") }
+#   { if (include_transects) . else filter(., Quadrant != "Transects") } %>%
+#   mutate(BC_Park = as.character(GRTS_Cell_ID) %in% as.character(bc_parks_cells))
 # 
 # samplingE <- effort_nights %>%
 #   group_by(Year) %>%
 #   summarise(
-#     `Number of Grids`       = n_distinct(GRTS_Cell_ID),
-#     `Number of Site Nights` = n(),   # one row = one site (cell + quadrant) x night
+#     `Number of Grids`          = n_distinct(GRTS_Cell_ID),
+#     `Number of BC Parks Grids` = n_distinct(GRTS_Cell_ID[BC_Park]),
+#     `Number of Site Nights`    = n(),   # one row = one site (cell + quadrant) x night
 #     .groups = "drop"
 #   ) %>%
 #   arrange(Year)
 # 
 # write.csv(samplingE, "Data/Analyzed/SummarySamplingEffort.csv")
 
-#Sampling effort in BC Parks --NEED TO WRITE THIS!!
-
+# ##-----BC Parks summary-------
+# bc_parks <- tribble(
+#   ~GRTS_Cell_ID, ~Park,
+#   986,    "Bowron",
+#   6202,   "Goldstream",
+#   16426,  "Carp",
+#   17706,  "Wells Gray",
+#   26170,  "Yakoun",
+#   37274,  "Mount Robson",
+#   38442,  "Churn Creek",
+#   115322, "Tweedsmuir",
+#   132650, "Junction Sheep",
+#   145578, "Premier Lake",
+#   172090, "Mount Seymour",
+#   175354, "Liard Hot Springs",
+#   206394, "Naikoon",
+#   212906, "Horne Lake",
+#   230186, "Skagit",
+#   243562, "Kimberley",
+#   265749, "Kettle/Conkle",
+#   283586, "Lakelse Lake",
+#   317428, "Manning"
+# )
+# 
+# park_year_grid <- effort_nights %>%
+#   mutate(GRTS_Cell_ID = as.numeric(GRTS_Cell_ID)) %>%
+#   filter(GRTS_Cell_ID %in% bc_parks$GRTS_Cell_ID) %>%
+#   distinct(GRTS_Cell_ID, Year) %>%
+#   mutate(Sampled = "✓") %>%
+#   # add every park cell x year combination, including cells never sampled
+#   complete(GRTS_Cell_ID = bc_parks$GRTS_Cell_ID, Year = 2016:2025,
+#            fill = list(Sampled = "")) %>%
+#   group_by(GRTS_Cell_ID) %>%
+#   mutate(`Number of Years` = sum(Sampled == "✓")) %>%
+#   ungroup() %>%
+#   pivot_wider(names_from = Year, values_from = Sampled) %>%
+#   left_join(bc_parks, by = "GRTS_Cell_ID") %>%
+#   relocate(GRTS_Cell_ID, Park) %>%
+#   relocate(`Number of Years`, .after = last_col()) %>%
+#   arrange(GRTS_Cell_ID) %>%
+#   rename(`GRTS Cell ID` = GRTS_Cell_ID) %>%
+#   arrange(desc(`Number of Years`))
+# write.csv(park_year_grid, "Data/Analyzed/ParksSamplingEffort.csv")
 
 # 
 # ##---Summary for map----
@@ -160,8 +207,14 @@ options(htmlwidgets.TOJSON_ARGS = list(na = 'string'))
 
 #load sampling effort csv
 samplingE <- read.csv("Data/Analyzed/SummarySamplingEffort.csv")
+parksSamplingE <- read.csv("Data/Analyzed/ParksSamplingEffort.csv")
 #remove extra column with numebrs
 samplingE$X <- NULL
+parksSamplingE$X <- NULL
+
+#format BC parks summary table
+
+
 
 # Load the model covariates summary table
 model_covariates <- read.csv("Data/Analyzed/ModelVariables.csv")
@@ -172,7 +225,6 @@ transect_covariates <- read.csv("Data/Analyzed/ModelVariables_Transect.csv")
 site_list <- readRDS("Data/Analyzed/MapDataSummary.rds")
 
 #format the covariates df 
-
 # Species code to common name lookup
 species_names <- c(
   ANPA = "Pallid Bat",
@@ -828,7 +880,9 @@ Acoustic recording is a cost-effective method for monitoring bat populations acr
 
 Bat monitoring data can be analyzed using different statistical approaches, each with distinct assumptions and outputs. Activity trend models examine changes in relative acoustic activity over time, providing a straightforward measure of whether bat detections are increasing, decreasing, or remaining stable across the monitoring network.
 
-Dynamic occupancy models take a different approach, estimating the probability that a species occupies a given site, while explicitly accounting for imperfect detection. Rather than treating a non-detection as an absence, these models distinguish between a species being truly absent versus simply going undetected, an important consideration given the variable detectability of bats discussed above. They also track colonization and extinction probabilities across sites over time, providing insight into range shifts and local population dynamics.
+Dynamic occupancy models take a different approach, estimating the probability that a species occupies a given site while explicitly accounting for imperfect detection. Rather than treating a non-detection as an absence, these models distinguish between a species being truly absent and simply going undetected, an important consideration given the variable detectability of bats discussed above. They also track colonization and extinction probabilities across sites over time, providing insight into range shifts and local population dynamics.
+
+The two approaches differ in sensitivity and therefore serve complementary roles. Activity data are inherently noisy, influenced by weather, local foraging conditions, and the number of individuals passing a detector, but they respond quickly to change and can provide an early indication of decline. Occupancy, in contrast, changes only when a species is lost from (or gains) sites, so a stronger and more sustained signal is needed before a trend becomes apparent. Occupancy models can therefore act as a second, more conservative test of patterns first suggested by activity data. When both approaches point in the same direction, the evidence for a real population change is stronger, and confidence in the results is correspondingly higher.
 
 In 2025, both model types were run to examine differences in results and assess the complementary information each approach provides.
 
@@ -837,16 +891,6 @@ In 2025, both model types were run to examine differences in results and assess 
 ## Data Collection
 
 The NABat monitoring program was established in BC in 2016 by WCSC and has sampled 65 grid cells in total. Cells were selected using the GRTSID system [@loeb2015Plan], based on accessibility, presence of bat habitat, suitable recorder sites, and where possible, a road suitable for a driving transect (30–45 km, relatively straight).
-
-Of 63 currently active cells, `r samplingE[9,2]` were monitored in 2025 for a total of `r samplingE[9,3]` site nights ([@tbl-samp]); the remaining `r 63-samplingE[9,2]` were not monitored due to limited local capacity. The network is well-distributed across the province, with a slight bias toward southern BC and population centres ([@fig-map]).
-
-**Stationary Surveys**
-
-Two to four stationary detectors were deployed across at least two quadrants per grid cell for a minimum of seven nights. Sites are selected to maximize species detection and recording quality across different habitat types (see [@rae2024North] for full site selection criteria). Deployment occurs between mid-May and mid-July, after bats have emerged from hibernation but before young bats are volant. Sites and timing are kept consistent between years to minimize variability in conditions affecting bat activity.
-
-**Transect Surveys**
-
-Where possible, driving transects were conducted following @loeb2015Plan. Two replicates of a 30–35 km route are driven at 30–35 km/h with a rooftop detector, using straight roads that minimize switchbacks. Transects are conducted concurrently with stationary deployments.
 
 ```{r}
 #| echo: false
@@ -858,7 +902,7 @@ Where possible, driving transects were conducted following @loeb2015Plan. Two re
 #| fig.pos: 'H'
 
 kable(samplingE,
-      col.names = c("Year", "Number of Grid Cells Sampled", "Site Nights"),
+      col.names = c("Year", "Number of Grid Cells Sampled","Number of BC Parks Grids", "Site Nights"),
       label = "sampling-efforts",
       escape = FALSE,
       align = "ccc") %>%
@@ -867,8 +911,44 @@ kable(samplingE,
                 position = "center") %>%
   column_spec(1, width = "8em") %>%
   column_spec(2, width = "10em") %>%
-  column_spec(3, width = "8em")
+  column_spec(3, width = "10em")%>%
+  column_spec(4, width = "8em") 
+  
 ```
+
+In 2025 a total of `r samplingE[9,2]` grid cells were monitored for a total of `r samplingE[9,3]` site nights (@tbl-samp). Of the cells sampled in 2025 a total of `r sum(parksSamplingE$X2025 != "")` were sampled by BC Parks staff (@tbl-samp-parks). The network is well-distributed across the province, with a slight bias toward southern BC and population centres (@fig-map).
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| include: true
+#| label: tbl-samp-parks
+#| tbl-cap: Summary of yearly sampling of grid cells in BC Parks.
+#| fig.pos: 'H'
+
+kable(parksSamplingE,
+      col.names = c("GRTS Cell ID", "Park", 2016:2025, "Total Years"),
+      label = "parks-sampling",
+      escape = FALSE,
+      align = c("c", "l", rep("c", 10), "c")) %>%
+  kable_styling(bootstrap_options = c("striped"),
+                full_width = FALSE,
+                position = "center") %>%
+  add_header_above(c(" " = 2, "Year" = 10, " " = 1)) %>%
+  column_spec(1, width = "6em") %>%
+  column_spec(2, width = "10em") %>%
+  column_spec(3:12, width = "3em") %>%
+  column_spec(13, width = "6em")
+```
+
+### Stationary Surveys
+
+Two to four stationary detectors were deployed across at least two quadrants per grid cell for a minimum of seven nights. Sites are selected to maximize species detection and recording quality across different habitat types (see [@rae2024North] for full site selection criteria). Deployment occurs between mid-May and mid-July, after bats have emerged from hibernation but before young bats are volant. Sites and timing are kept consistent between years to minimize variability in conditions affecting bat activity.
+
+### Transect Surveys
+
+Where possible, driving transects were conducted following @loeb2015Plan. Two replicates of a 30–35 km route are driven at 30–35 km/h with a rooftop detector, using straight roads that minimize switchbacks. Transects are conducted concurrently with stationary deployments.
 
 ### Equipment
 
@@ -876,9 +956,33 @@ A wide range of equipment is used across sampling locations in BC. Stationary un
 
 2025 represents a transition year for equipment standardization. All SM2Bat units are being replaced with Titley Scientific Chorus units, and Anabat units are being phased out in favour of the EchoMeter Touch2Pro for mobile transects. To account for detection differences between outgoing and incoming equipment, paired deployments were conducted at a number of grid cells this year, both stationary (SM2Bat and Chorus) and mobile (Anabat SD1 and EchoMeter Touch2Pro). These paired deployments will provide correction factors to ensure data comparability across the transition period.
 
-### Model Covariates
+### Landscape and Weather Covariates
 
-Numerous environmental factors influence bat activity across British Columbia. Species-specific covariates for stationary models were established by @rae2022North using AIC-based stepwise selection ([@tbl-cov]).
+We used the same covariates for the activity trend models as @rae2022North. Where possible, temperature and relative humidity were recorded in each grid cell with onsite data loggers. Where loggers were unavailable, values came from the nearest climate station in the Pacific Climate Impacts Consortium (PCIC) [Provincial Climate Data Set (PCDS)](https://www.uvic.ca/pcic/data-analysis-tools/data-portal/station-data/index.php), which aggregates and quality-controls observations from multiple provincial and federal networks. From these station records we also derived nightly mean wind speed (km/h) and nightly total precipitation (mm). Degree days above 10 °C since January 1 were calculated from daily temperature records for each site-night.
+
+Sun and moon positions were calculated with the astral package (v3.2) in Python. Sunset and sunrise times defined the night period for each site-night. Moon illumination was then calculated as the proportion of the lunar disc illuminated multiplied by the proportion of the night the moon spent above the horizon. Site elevation was extracted from the[Open-Meteo Elevation API](https://open-meteo.com/en/docs/elevation-api). Distance to clutter and percent clutter were recorded by grid leaders at deployment, and distance to water and water body type were derived from the [BC Freshwater Atlas](https://www2.gov.bc.ca/gov/content/data/geographic-data-services/topographic-data/freshwater).\
+\
+For the dynamic occupancy models, we explored additional factors that might influence colonization and extinction: distance to the nearest road and distance to the nearest timber harvest, each measured from the survey location to the closest feature. Road features came from the Human Footprint Index (HFI) layer under development by the Geospatial Centre at Biodiversity Pathways (unpublished data). Harvest features came from the Province of British Columbia’s [consolidated cutblocks layer.](https://www.arcgis.com/home/item.html?id=2e27a5d899fc4c33a32037d392c00767#overview) All continuous covariates were standardized by centering on the mean and dividing by the standard deviation. Missing values were imputed with the global mean before standardization.
+
+Since 2022, insect activity has also been sampled along transect routes using vehicle-mounted sticky traps. Samples are identified to order, and we will evaluate insect abundance as a potential covariate of bat activity in future years.
+
+## Acoustic Processing
+
+In 2025 acoustic analysis mostly followed the standards set in previous years [@rae2022North; @rae2024North]. This included running all files through two automatic classifiers, Kaleidoscope's Bats of North America 5.4.0 classifier and Sonobat 3.0's Northwestern British Columbia classifier, to remove files that do not contain bat pulses and giving a preliminary bat species identification.
+
+Manual vetting largely follows the protocol of @reichert2018 and previous analysis standards developed by WCSC [@rae2022North] . The key difference in the 2024 and 2025 acoustic analysis compared to previous years is that not all automatic species identifications were manually verified. Instead, based on findings from @stratton2022Coupling , at least 50% of recordings were selected for manual verification.
+
+### Subsetting for manual verification
+
+Starting in 2024, the NNW Bat Hub implemented manual vetting of only a subset of all the bioacoustic data collected under the NABat program. Given the project’s large scale, manually vetting all recordings is not feasible long-term. To address this, the NNW Bat Hub, in collaboration with WCSC and contractor Brian Paterson, developed procedures to ensure that selecting a subset of recordings for manual review minimizes biases in analytical results. These standards prioritize the accurate identification of rare and difficult-to-recognize species to maintain the integrity of models and analyses.
+
+To ensure data accuracy, manual verification was conducted based on the number of tagged recordings at each site. For sites with 200 or fewer tagged recordings, all non-noise recordings were manually reviewed. For sites with more than 200 tagged recordings, verification depended on the proportion of recordings assigned a species label. All tags for rare species (comprising ≤10% of prior years’ identifications) and commonly misidentified species were fully vetted. Specifically, all Eastern Red Bat (*Lasiurus borealis*) tags were manually reviewed due to frequent misclassification as Little Brown Bats (*Myotis lucifugus*). Additionally, recordings of common species were randomly selected for verification until 50% of total recordings were reviewed. If fewer than 50% of recordings had species tags, all classifier-assigned tags were manually verified, and “NoID” recordings were randomly selected until 50% of all recordings were reviewed.
+
+## Statistical Analyses
+
+### Stationary Activity Trends
+
+Stationary activity trends followed closely what was established by WCSC and Dr. Carl Schwarz in 2021 [@rae2022North]. This includes conducting species-specific trend analyses examining activity patterns in the data collected to date using negative binomial GLMM models with a set of species-specific covariates (@tbl-cov). Species-specific covariates for stationary models were selected using AIC-based stepwise selection (@tbl-cov).
 
 ```{r}
 #| echo: false
@@ -900,7 +1004,39 @@ kable(model_covariates,
   column_spec(3, width = "20em")
 ```
 
-Transect models followed the same selection approach, testing all combinations of nightly mean temperature, relative humidity, wind speed, and moon illumination, with the most parsimonious model for each species selected based on lowest AIC (@tbl-cov-transects).
+All models followed the same basic structure, modelling the total number of detected calls as a negative binomial response with log link:
+
+``` r
+Total detections ~ YearS + log(Sample Nights) + (1|Grid Cell ID) + (1|Quadrant) 
++ species specific covariates
+```
+
+Where total detections is the total number of detected calls of a given species at a site in a given year. YearS is the standardized survey year (years since 2016) and provides the estimate of the temporal activity trend. log(Sample Nights) is the natural logarithm of the number of detector-nights and accounts for variation in sampling effort among site-years. The random intercepts (1\|Grid Cell ID) and (1\|Quadrant) allow baseline activity to vary among grid cells and among quadrants within them, respectively.
+
+Post-hoc tests were run on the final models to ensure proper model fit. Species were excluded from the analysis if model fit was not appropriate due to issues including under-dispersion or standard errors that were more than 3 times the estimate. Model results were also excluded if there was less than 150 recordings across all sample years. We conducted our statistical analyses on provincial and regional scales. For the regional analyses, we assigned all sampled grid cells into four geographic regions (Southwestern, Southcentral, Southeastern, and Northern), each roughly corresponding to different species sets (@fig-map).
+
+#### Use of Automated Identification Results in Stationary Trend Analyses
+
+Stationary trend analyses used AutoID classifications from Kaleidoscope Pro and Sonobat 3.0. Manual verification was applied only to flag non-bat noise; where manual review suggested a different species than the AutoID label, the original AutoID classification was retained.
+
+This approach was first identified as necessary in 2023 [@rae2022North], when analyses of manually verified data revealed a consistent positive trend across all species, this was interpreted as an artifact of reviewer learning over time rather than a true biological signal. As verifier experience increased across years, calls were increasingly assigned to specific species rather than left unidentified, producing an apparent increase in detections independent of actual bat activity. Because this observer effect is difficult to control for statistically, AutoID classifications are now used as the standard for all activity trend analyses, as automated classifiers apply consistent criteria across all years. While AutoID is subject to some misclassification, the error rate is consistent across years and does not confound detection of genuine temporal trends.
+
+### Transect Abundace Models
+
+The province-wide transect abundance trend models used only manually verified detections. Transects are surveyed from a moving vehicle, so each bat is likely recorded only once as the vehicle passes. Call counts therefore serve as an index of relative abundance rather than of activity. When a detection was identified as a species couplet, it was counted toward each species in the couplet.
+
+All models had the same basic structure: total detections were modelled as a negative binomial response with a log link:
+
+``` r
+Total detections ~ YearS + log(transect length) + (1|Grid Cell ID) 
++ species specific covariates
+```
+
+Total detections is the number of calls of a given species detected on a transect in a given year. YearS is survey year expressed as years since 2016, and provides the estimate of the temporal activity trend. log(transect length) is the natural logarithm of the total length of the transect sampled and accounts for variation in sampling effort among transects. The random intercept (1\|Grid Cell ID) allow baseline activity to vary among grid cells.
+
+Covariates were limited to weather variables, because landscape-level covariates cannot be represented meaningfully for a survey that moves through the landscape. Species-specific covariates for transect models were selected based on those previously established in @rae2022North and were selected using AIC-based stepwise selection (@tbl-cov-transects).
+
+Since transects are only conducted in roughly 50% of our grid cells on a typical year and each transect records fewer bats per night than stationary monitoring, we have elected not to conduct regional-scale transect trend analyses due to low sample sizes.
 
 ```{r}
 #| echo: false
@@ -922,43 +1058,17 @@ kable(transect_covariates,
   column_spec(3, width = "20em")
 ```
 
-Dynamic occupancy model covariates were based on those established by @rae2022North, with additional exploration of factors influencing colonization and extinction. These included distance to roads and distance to harvest cutblocks, derived from the unpublished Human Footprint Index (HFI) layer currently being developed by the Geospatial Centre within Biodiversity Pathways.
-
-Where possible, temperature and relative humidity are recorded in each grid cell using onsite logging devices; otherwise, data are sourced from the nearest climate station. Additional covariates include nightly mean wind speed (km/h), cumulative precipitation since January 1 (mm), degree days above 10°C since January 1, and moon illumination (proportion illuminated × proportion of night above horizon). Site-level covariates — including distance to clutter, percent clutter, distance to water, and water feature type — are recorded by grid leaders during deployment.
-
-Since 2022, insect activity has been measured along transect routes using vehicle-mounted sticky traps. Collected samples are identified to order level by WCSC and will be evaluated as a potential covariate of bat activity.
-
-## Acoustic Processing
-
-In 2025 acoustic analysis mostly followed the standards set in previous years [@rae2022North; @rae2024North]. This included running all files through two automatic classifiers, Kaleidoscope's Bats of North America 5.4.0 classifier and Sonobat 3.0's Northwestern British Columbia classifier, to remove files that do not contain bat pulses and giving a preliminary bat species identification.
-
-Manual vetting follows @reichert2018Guide and analysis standards developed by the NNW Bat Hub and WCSC. Consistent with 2024, approximately 50% of all recordings were manually verified; for full details on this process, refer to the 2024 BC NABat Report.
-
-## Statistical Analyses
-
-### Activity Trends
-
-Statistical analyses followed closely what was established by WCSC and Dr. Carl Schwarz in 2021 [@rae2022North]. This includes conducting species-specific trend analyses examining activity patterns in the data collected to date using the (negative binomial GLMM) models and the covariates identified in @tbl-cov.
-
-Species were excluded from the analysis if model fit was not appropriate due to issues including under-dispersion or standard errors that were more than 3 times the estimate. Model results were also excluded if there was less than 150 recordings across all sample years. We conducted our statistical analyses on provincial and regional scales. For the regional analyses, we assigned all sampled grid cells into four geographic regions (Southwestern, Southcentral, Southeastern, and Northern), each roughly corresponding to different species sets ([@fig-map]). Since transects are only conducted in roughly 50% of our grid cells on a typical year and each transect records fewer bats per night than stationary monitoring, we have elected not to conduct regional-scale transect trend analyses due to low sample sizes.
-
-#### Use of Automated Identification Results in Stationary Trend Analyses
-
-Stationary trend analyses used AutoID classifications from Kaleidoscope Pro and Sonobat 3.0. Manual verification was applied only to flag non-bat noise; where manual review suggested a different species than the AutoID label, the original AutoID classification was retained.
-
-This approach was first identified as necessary in 2023 [@rae2022North], when analyses of manually verified data revealed a consistent positive trend across all species, this was interpreted as an artifact of reviewer learning over time rather than a true biological signal. As verifier experience increased across years, calls were increasingly assigned to specific species rather than left unidentified, producing an apparent increase in detections independent of actual bat activity. Because this observer effect is difficult to control for statistically, AutoID classifications are now used as the standard for all activity trend analyses, as automated classifiers apply consistent criteria across all years. While AutoID is subject to some misclassification, the error rate is consistent across years and does not confound detection of genuine temporal trends.
-
-Trend analyses are presented only for species confirmed present through manual verification and for which models fully converged.
-
 ### Dynamic Occupancy
 
-This analysis used nightly acoustic detection/non-detection data from passive bat detectors deployed at GRTS-selected sites in British Columbia (BC) as part of the NABat long-term monitoring program. Data were filtered to the 2017–2025 period, and analysis used an every-other-night subsampling protocol to reduce temporal autocorrelation between consecutive nights, using max 4 visits per site-year. Sites had to have a minimum of 2 visits within a given year and data from at least 2 years total. Models were run separately for all 17 bat species.
+We fitted multi-season (dynamic) occupancy models [@mackenzie2003] to estimate trends in occupancy, colonization, and persistence while accounting for imperfect detection. This analysis used nightly acoustic detection/non-detection data from passive bat detectors deployed at sites in British Columbia (BC).
 
-Fitted multi-season (dynamic) occupancy models (MacKenzie et al. 2003) to estimate trends in occupancy, colonization, and persistence while accounting for imperfect detection. Initial occupancy (ψ) was modeled as a function of elevation and water nearby, with a random effect for region. Colonization (γ) and persistence (φ) were modeled with time-varying intercepts and distance to road as a covariate. Detection probability (p) was modeled as a function of percent clutter, nightly mean temperature, and Julian date.
+Initial occupancy ($\psi$) was modeled as a function of distance to water and elevation. Colonization ($\gamma$) and persistence ($\varphi$) were modeled as a function of distance to water, elevation, year-varying distance to harvest, and distance to road. Detection probability (p) was modeled as a function of percent clutter, nightly mean temperature, and Julian night. 
 
-Elevation for each site was extracted from AWS terrain tiles (\~30 m resolution, SRTM-based) using the elevatr package in R, distance to road and distance to harvest was extracted using the Biodiversity Pathways Human Footprint Index (not published yet). All continuous covariates were standardized by centering on their mean and dividing by their standard deviation; missing covariate values were imputed with the global mean prior to standardization.
+We excluded 2016 because few sites were surveyed that year. Starting the time series in 2016 would have required the model to estimate initial occupancy (ψ₁) for the many sites not yet sampled, and a poorly informed ψ₁ can propagate through the colonization and extinction estimates and produce false trends.
 
-Models were fit in a Bayesian framework using JAGS via the jagsUI package in R, with 30,000 iterations, 15,000 burn-in, thinning by 5, and 3 chains run in parallel, yielding 9,000 posterior samples for inference. Priors on all regression coefficients were normally distributed (mean = 0, precision = 0.368, equivalent to SD ≈ 1.65), and the region-level random effect standard deviation received a uniform(0, 5) prior. Model convergence was assessed using Rhat diagnostics. Results are interpreted using posterior means and 95% Bayesian credible intervals. An overall occupancy trend metric (λ) was calculated as the ratio of estimated occupancy in the final year to occupancy in the initial year; values of λ \> 1 with 95 CIs entirely above 1 indicate an increase in occupancy, values \< 1 with 95 CIs entirely below 1 indicate a decline, and values with CIs overlapping 1 indicate uncertain or stable trends. 
+To reduce temporal autocorrelation between consecutive nights, we subsampled every other night, using a maximum of four nights per site-year as repeat surveys. Sites were included if they had at least two nights of data in a given year and data from at least two years. After filtering, 185 sites in 63 grid cells in British Columbia were retained. Models were fit separately for each of the 15 bat species.
+
+Models were fit in a Bayesian framework using JAGS (Version 4.3.2) via the jagsUI package (Version 1.6.3) in r (Version 4.5.1). We ran 3 chains in parallel for 30,000 iterations each, discarding the first 15,000 as burn-in and thinning the remainder by 10, yielding 9,000 posterior samples for inference. Priors on all regression coefficients were normal with mean 0 and precision 0.368 (equivalent to a standard deviation of approximately 1.65), and the standard deviation of the region-level random effect was assigned a Uniform(0, 5) prior. Convergence was assessed using Rhat diagnostics, with values below 1.1 taken to indicate convergence. Results are summarized using posterior means and 95% Bayesian credible intervals. We calculated an overall occupancy trend metric (𝜆) as the ratio of estimated occupancy in the final year to that in the initial year; values of 𝜆 \> 1 with 95% credible intervals entirely above 1 indicate an increase in occupancy, values 𝜆\<1 with intervals entirely below 1 indicate a decline, and intervals overlapping 1 indicate an uncertain or stable.
 
 # Results
 
@@ -987,14 +1097,24 @@ if (knitr::is_html_output()) {
   dir.create(file.path(getwd(), "Figures"), showWarnings = FALSE)
   map_file <- file.path(getwd(), "Figures", "survey_map.png")
   
-  # get the underlying leaflet widget (works for mapview or leaflet objects)
-  m_pdf <- if (inherits(m_full, "mapview")) m_full@map else m_full
+  m_pdf <- m_full
   
-  # allow fractional zoom so the view fits BC tightly instead of snapping out a level
+  # drop the custom HTML legend (the only addControl call) so it can't double up
+  m_pdf$x$calls <- Filter(function(cl) cl$method != "addControl", m_pdf$x$calls)
+  
+  # standard leaflet legend for the regions, same colours as the HTML version
+  m_pdf <- leaflet::addLegend(
+    m_pdf,
+    position = "topright",
+    colors   = unname(region_colors),
+    labels   = names(region_colors),
+    title    = "Analysis Regions",
+    opacity  = 0.6
+  )
+  
+  # fractional zoom + BC extent
   m_pdf$x$options$zoomSnap  <- 0.25
   m_pdf$x$options$zoomDelta <- 0.25
-  
-  # BC bounding box
   m_pdf <- leaflet::fitBounds(m_pdf,
                               lng1 = -139.1, lat1 = 48.2,
                               lng2 = -114.0, lat2 = 60.1)
@@ -1004,9 +1124,12 @@ if (knitr::is_html_output()) {
       m_pdf,
       file    = map_file,
       delay   = 5,
-      vwidth  = 1100,   # BC is wider than tall in Web Mercator
+      vwidth  = 1100,
       vheight = 950,
-      zoom    = 2       # renders at 2x pixel density for a sharp print
+      zoom    = 2,
+      # removes zoom buttons and the layers checkbox panel; keeps legend + scale bar
+      remove_controls = c("zoomControl", "layersControl", "homeButton",
+                          "drawToolbar", "easyButton")
     )
   }, error = function(e) {
     message("mapshot2 failed: ", e$message)
