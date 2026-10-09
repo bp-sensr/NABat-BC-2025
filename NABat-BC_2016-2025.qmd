@@ -247,22 +247,10 @@ species_names <- c(
 )
 
 # Clean covariate from models and format for report
-clean_covars <- function(x) {
-  x %>%
-    gsub("\\.", " ", .) %>%                          # replace dots with spaces
-    gsub("\\bdd\\b", "Degree Days", .) %>%           # dd -> Degree Days
-    gsub("Temp\\b", "Temperature", .) %>%            # Temp -> Temperature
-    gsub("Windsp\\b", "Wind Speed", .) %>%           # Windsp -> Wind Speed
-    gsub("Clutterdist\\b", "Distance to Clutter", .) %>%  # Clutterdist -> Distance to Clutter
-    gsub("mtime2h mphase", "Moon", .) %>%      # mtime2h mphase -> Moon Phase
-    gsub(",\\s*I\\(YearS\\^2\\)|I\\(YearS\\^2\\),?\\s*", "", .) %>% #remove quadratic term from the reporting 
-    trimws()
-}
-
 model_covariates<- model_covariates %>%
   mutate(
     Common_Name = species_names[sp],
-    Covariates = clean_covars(vars)
+    Covariates = vars
   ) %>%
   select(Common_Name, Species_Code = sp, Covariates)
 
@@ -828,7 +816,9 @@ make_occ_species_map <- function(species,
 
 # Executive Summary
 
-The North American Bat Monitoring (NABat) program is a multi-agency initiative administered by the US Geological Survey (USGS). In 2024, the North by Northwest (NNW) Bat Hub was formed by combining the former Alberta Hub and the BC and Southeast Alaska (BC-SE_AK) Hub. The NNW Bat Hub leads the NABat program within British Columbia, with key support from provincial and state representatives and WCSC. In 2025, 57 grid cells throughout British Columbia were monitored. Results indicate that bat populations across British Columbia remain stable, with some key species showing small positive trends, including Little Brown Myotis and Eastern Red Bat. Given growing threats to bat populations in BC, continued monitoring is essential to detect any significant changes.
+The North American Bat Monitoring (NABat) program is a multi-agency initiative administered by the US Geological Survey (USGS). In 2024, the North by Northwest (NNW) Bat Hub was formed by combining the former Alberta Hub and the BC and Southeast Alaska (BC-SE_AK) Hub. The NNW Bat Hub leads the NABat program within British Columbia, with key support from provincial and state representatives and WCSC.
+
+In 2025, 57 grid cells throughout British Columbia were monitored. Two statistical analysis methods were used complimentary to evaluate the trends of bat species across the province. Results indicate that bat populations across British Columbia remain stable, with some key species showing small positive trends, including Little Brown Myotis and Eastern Red Bat. Given growing threats to bat populations in BC, continued monitoring is essential to detect any significant changes.
 
 # Land Acknowledgement
 
@@ -960,7 +950,7 @@ A wide range of equipment is used across sampling locations in BC. Stationary un
 
 We used the same covariates for the activity trend models as @rae2022North. Where possible, temperature and relative humidity were recorded in each grid cell with onsite data loggers. Where loggers were unavailable, values came from the nearest climate station in the Pacific Climate Impacts Consortium (PCIC) [Provincial Climate Data Set (PCDS)](https://www.uvic.ca/pcic/data-analysis-tools/data-portal/station-data/index.php), which aggregates and quality-controls observations from multiple provincial and federal networks. From these station records we also derived nightly mean wind speed (km/h) and nightly total precipitation (mm). Degree days above 10 °C since January 1 were calculated from daily temperature records for each site-night.
 
-Sun and moon positions were calculated with the astral package (v3.2) in Python. Sunset and sunrise times defined the night period for each site-night. Moon illumination was then calculated as the proportion of the lunar disc illuminated multiplied by the proportion of the night the moon spent above the horizon. Site elevation was extracted from the[Open-Meteo Elevation API](https://open-meteo.com/en/docs/elevation-api). Distance to clutter and percent clutter were recorded by grid leaders at deployment, and distance to water and water body type were derived from the [BC Freshwater Atlas](https://www2.gov.bc.ca/gov/content/data/geographic-data-services/topographic-data/freshwater).\
+Sun and moon positions were calculated with the astral package (v3.2) in Python. Sunset and sunrise times defined the night period for each site-night. Moon illumination was then calculated as the proportion of the lunar disc illuminated multiplied by the proportion of the night the moon spent above the horizon. Site elevation was extracted from the [Open-Meteo Elevation API](https://open-meteo.com/en/docs/elevation-api). Distance to clutter and percent clutter were recorded by grid leaders at deployment, and distance to water and water body type were derived from the [BC Freshwater Atlas](https://www2.gov.bc.ca/gov/content/data/geographic-data-services/topographic-data/freshwater).\
 \
 For the dynamic occupancy models, we explored additional factors that might influence colonization and extinction: distance to the nearest road and distance to the nearest timber harvest, each measured from the survey location to the closest feature. Road features came from the Human Footprint Index (HFI) layer under development by the Geospatial Centre at Biodiversity Pathways (unpublished data). Harvest features came from the Province of British Columbia’s [consolidated cutblocks layer.](https://www.arcgis.com/home/item.html?id=2e27a5d899fc4c33a32037d392c00767#overview) All continuous covariates were standardized by centering on the mean and dividing by the standard deviation. Missing values were imputed with the global mean before standardization.
 
@@ -982,7 +972,7 @@ To ensure data accuracy, manual verification was conducted based on the number o
 
 ### Stationary Activity Trends
 
-Stationary activity trends followed closely what was established by WCSC and Dr. Carl Schwarz in 2021 [@rae2022North]. This includes conducting species-specific trend analyses examining activity patterns in the data collected to date using negative binomial GLMM models with a set of species-specific covariates (@tbl-cov). Species-specific covariates for stationary models were selected using AIC-based stepwise selection (@tbl-cov).
+Stationary activity trends followed closely what was established by WCSC and Dr. Carl Schwarz in 2021 [@rae2022North]. This included conducting trend analyses examining activity patterns in the data collected to date using negative binomial GLMM models with a set of species-specific covariates (@tbl-cov). Species-specific covariates for stationary models were selected using AIC-based stepwise selection (@tbl-cov).
 
 ```{r}
 #| echo: false
@@ -990,7 +980,7 @@ Stationary activity trends followed closely what was established by WCSC and Dr.
 #| message: false
 #| include: true
 #| label: tbl-cov
-#| tbl-cap: Top-performing stationary models selected via AIC-based stepwise selection. Covariates are described as, Moon = moon illumination × proportion of night above horizon; Clutter = distance (m) to nearest object; Nearby Water = detector within 100m of water;RH = mean nightly relative humidity (%); Degree Days = cumulative degree days above 10°C since Jan 1. Source @rae2024North
+#| tbl-cap: Top-performing stationary models selected by AIC-based stepwise selection. Definitions of covariates are: Temperature = nightly temperature (°C); Wind speed = nightly mean wind speed (km/h); RH = nightly mean relative humidity (%); dd = cumulative degree days above 10 °C since January 1; Moon = proportion of the moon illuminated × proportion of the night the moon was above the horizon; Clutter = distance (m) to the nearest clutter object; Nearby water = whether the detector was within 100 m of water (1 = yes, 0 = no); I(YearS²) = quadratic year term allowing for non-linear temporal trends. A * B denotes the main effects of A and B plus their interaction. 
 #| fig.pos: 'H'
 
 kable(model_covariates,
@@ -1017,7 +1007,7 @@ Post-hoc tests were run on the final models to ensure proper model fit. Species 
 
 #### Use of Automated Identification Results in Stationary Trend Analyses
 
-Stationary trend analyses used AutoID classifications from Kaleidoscope Pro and Sonobat 3.0. Manual verification was applied only to flag non-bat noise; where manual review suggested a different species than the AutoID label, the original AutoID classification was retained.
+Stationary trend analyses used AutoID classifications from Kaleidoscope Pro. Manual verification was applied only to flag non-bat noise; where manual review suggested a different species than the AutoID label, the original AutoID classification was retained.
 
 This approach was first identified as necessary in 2023 [@rae2022North], when analyses of manually verified data revealed a consistent positive trend across all species, this was interpreted as an artifact of reviewer learning over time rather than a true biological signal. As verifier experience increased across years, calls were increasingly assigned to specific species rather than left unidentified, producing an apparent increase in detections independent of actual bat activity. Because this observer effect is difficult to control for statistically, AutoID classifications are now used as the standard for all activity trend analyses, as automated classifiers apply consistent criteria across all years. While AutoID is subject to some misclassification, the error rate is consistent across years and does not confound detection of genuine temporal trends.
 
@@ -1044,7 +1034,7 @@ Since transects are only conducted in roughly 50% of our grid cells on a typical
 #| message: false
 #| include: true
 #| label: tbl-cov-transects
-#| tbl-cap: Top-performing transect models selected via AIC-based stepwise selection. Covariates are described as, Moon = moon illumination × proportion of night above horizon;RH = mean nightly relative humidity (%).
+#| tbl-cap: Top-performing transect models selected by AIC-based stepwise selection. Definitions of covariates are: Temperature = nightly temperature (°C); Wind speed = nightly mean wind speed (km/h); RH = nightly mean relative humidity (%); Moon = proportion of the moon illuminated × proportion of the night the moon was above the horizon. 
 #| fig.pos: 'H'
 
 kable(transect_covariates,
@@ -1072,11 +1062,11 @@ Models were fit in a Bayesian framework using JAGS (Version 4.3.2) via the jagsU
 
 # Results
 
-2025 marked the tenth year of coordinated NABat sampling done in BC. A total of 56 grid cells were sampled with the support of over 60 individuals including contractors, volunteers and staff members from BC Parks, BC WLRS, and BC Ministry of Forests. Grid leaders have also collected a total of 16 transect insect sticky trap samples in 2025.
+2025 marked the tenth year of coordinated NABat sampling done in BC. A total of `` r samplingE$`Number of Grids`[samplingE$Year==2025] `` grid cells were sampled with the support of over 60 individuals including contractors, volunteers and staff members from BC Parks, BC WLRS, and BC Ministry of Forests. Grid leaders have also collected a total of 16 transect insect sticky trap samples in 2025, which will be added to previous years of data to explore the addition of them as an added covariate to transects (to be done in 2026?).
 
 ## Species Detection
 
-In 2025, all species previously documented in BC were detected. The manually verified detections varied among grid cell and regions (@fig-map). The most widely identified species as well as the most geographically distributed bats that were confirmed through manual ID were the Little Brown Bat followed by the Silver-haired Bat. Any notable species detection are addressed in the discussion.
+In 2025, all species previously documented in BC were detected. Total acoustic activity varied substantially among grid cells and regions (@fig-map). @fig-map is an interactive map. Readers can zoom in to see the individual stationary monitoring sites (blue circles), and click a site to open a pop-up with a summary pie chart of total detections by species and year.
 
 ```{r}
 #| echo: false
@@ -1138,23 +1128,17 @@ if (knitr::is_html_output()) {
 }
 ```
 
-## Activity Trend Models
+## Activity and Abundance Trend Models
 
-Stationary data was used to estimate activity trends for `r sum(merged_table$stationary_trend != "", na.rm = TRUE)` of BC's 15 resident species, while transect data was sufficient to estimate trends for `r sum(merged_table$transect_trend != "", na.rm = TRUE)` species (@tbl-modelcov). Of the stationary models, seven species showed statistically significant positive trends (p \< 0.05):
+We estimated yearly trends in nightly acoustic activity for `r sum(merged_table$stationary_trend != "", na.rm = TRUE)` of BC's 15 resident species. Transect data was sufficient to estimate trends for `r sum(merged_table$transect_trend != "", na.rm = TRUE)` species in BC (@tbl-modelcov). Of the stationary models, seven species showed statistically significant positive trends (p \< 0.05):
 
 - Townsend's Big-eared Bat (`r merged_table$stationary_trend[merged_table$Species == "Townsend's Big-eared Bat"]`)
 
 - Big Brown Bat (`r merged_table$stationary_trend[merged_table$Species == "Big Brown Bat"]`)
 
-- Spotted Bat (`r merged_table$stationary_trend[merged_table$Species == "Spotted Bat"]`)
-
-- Silver-haired Bat (`r merged_table$stationary_trend[merged_table$Species == "Silver-haired Bat"]`)
-
-- California Myotis (`r merged_table$stationary_trend[merged_table$Species == "California Myotis"]`)
-
-- Little Brown Mytois( `r merged_table$stationary_trend[merged_table$Species == "Little Brown Myotis"]`).
-
 - Long-legged Myotis (`r merged_table$stationary_trend[merged_table$Species == "Long-legged Myotis"]`).
+
+- Yuma Myotis (`r merged_table$stationary_trend[merged_table$Species == "Yuma Myotis"]`).
 
 No significant negative trends were detected in the stationary models. The remaining species with sufficient data had non-significant trend estimates.
 
@@ -1165,7 +1149,7 @@ Transect models yielded results for fewer species, with only Little Brown Myotis
 #| warning: false
 #| message: false
 #| label: tbl-modelcov
-#| tbl-cap:  Provincial stationary and transect trend estimates from 2017-2024 NABat monitoring in BC adjusted for covariates. Trends estimated on a logarithmic scale, thus a trend estimate of 0.05 corresponds to an annual change of 5%. Significant results (p value < 0.05) are highlighted in bold.
+#| tbl-cap:  Provincial stationary and transect trend estimates from 2017-2025 NABat monitoring in BC adjusted for covariates. Trends estimated on a logarithmic scale, thus a trend estimate of 0.05 corresponds to an annual change of 5%. Significant results (p value < 0.05) are highlighted in bold.
 #| tbl-pos: 'H'
 
 # Display table with conditional bolding
@@ -1276,7 +1260,7 @@ if (knitr::is_html_output()) {
 
 ## Dynamic Occupancy Models
 
-Models converged for 15 of the 17 bat species in British Columbia. ANPA, PAHE and TABR had too few detection and could not be modeled.
+Models converged for all 15 bat species in British Columbia.
 
 \
 ANPA and LABO needs to be explored more carefully since there was a big increase in the detection probability of 2025. Need to explore the data more carefully to see the reason for it.
@@ -1325,6 +1309,8 @@ Species ranges across the project period (2016–2025) continue to appear broadl
 ## Trend analyses
 
 ### Activity Trends
+
+---we still have positive trends even though we are using auto ID. How do these compare to Dynamic occupancy?
 
 Overall, results suggest that bat populations remain broadly stable across British Columbia, with no species showing widespread negative trends.
 
