@@ -13,10 +13,10 @@ readr
 purrr
 stringr
 forcats
+readxl
 reactable
 leaflet
 leaflet.extras
 kableExtra
 gt
 RColorBrewer
-readxl

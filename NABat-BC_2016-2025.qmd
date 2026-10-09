@@ -1,6 +1,6 @@
 ---
 title: "North American Bat Monitoring Program in British Columbia"
-subtitle: "Data Summary and Activity Trend Analyses: 2016 - 2025"
+subtitle: "Data Summary and Activity Trend Analyses: 2017 - 2025"
 format:
   html:
     grid:
@@ -218,7 +218,6 @@ transect_covariates<- transect_covariates %>%
     Covariates = clean_covars(vars)
   ) %>%
   select(Common_Name, Species_Code = sp, Covariates)
-
 ```
 
 ```{r}
@@ -283,17 +282,13 @@ make_sp_table <- function(sp_df, pie_colors) {
     paste(collapse = "")
 }
 
-# ── 5. Draw map with site markers ──────────────────────────────────────────────
-m <- leaflet() %>%
-  addProviderTiles(providers$Esri.WorldGrayCanvas)
-
-for (i in seq_len(nrow(site_list))) {
-  row   <- site_list[i, ]
-  sp    <- row$sp_data[[1]]
-  years <- row$years[[1]]
+# ── 5. Build popup HTML for each site ──────────────────────────────────────────
+build_popup <- function(site_name, sp, years) {
   
-  # Skip sites with no detections at all
-  if (is.null(sp) || nrow(sp) == 0 || sum(sp$n, na.rm = TRUE) == 0) next
+  # Sites with no detections at all get NA (filtered out below)
+  if (is.null(sp) || nrow(sp) == 0 || sum(sp$n, na.rm = TRUE) == 0) {
+    return(NA_character_)
+  }
   
   # -- One pie + species table per year (most recent first) ------------------
   year_blocks <- purrr::map_chr(sort(years, decreasing = TRUE), function(yr) {
@@ -335,38 +330,31 @@ for (i in seq_len(nrow(site_list))) {
   }) %>% paste(collapse = "")
   
   # -- Popup: stacked yearly pies --------------------------------------------
-  popup <- sprintf(
+  sprintf(
     '<div style="font-family:sans-serif;min-width:270px;max-width:340px;max-height:420px;overflow-y:auto;">
        <b style="font-size:14px;">%s</b>
        <hr style="margin:6px 0"/>
        %s
      </div>',
-    row$site_name, year_blocks
-  )
-  
-  # -- Blue dot marker -------------------------------------------------------
-  m <- m %>% addCircleMarkers(
-    lng         = row$Long, lat = row$Lat,
-    radius      = 6,
-    stroke      = TRUE,
-    color       = "#ffffff",
-    weight      = 1.5,
-    fillColor   = "#3A86FF",
-    fillOpacity = 0.9,
-    popup       = popup,
-    label       = row$site_name
+    site_name, year_blocks
   )
 }
+
+sites_plot <- site_list %>%
+  mutate(popup = purrr::pmap_chr(
+    list(site_name, sp_data, years),
+    build_popup
+  )) %>%
+  filter(!is.na(popup))
 
 # ── 6. Load spatial data ───────────────────────────────────────────────────────
 transects_sf <- st_read("Data/Mapping/transects_merged.shp", quiet = TRUE) |>
   st_zm() |>                                   # drop any Z/M values Leaflet can't use
   st_transform(crs = 4326)
-transects_sf <- transects_sf[!st_is_empty(transects_sf), ] 
+transects_sf <- transects_sf[!st_is_empty(transects_sf), ]
 
-regions <- st_read("Data/Mapping/BC-SEAK Hub Regions Mar 2025.shp", quiet = TRUE)
-regions <- st_transform(regions, crs = 4326)
-regions <- regions %>%
+regions <- st_read("Data/Mapping/BC-SEAK Hub Regions Mar 2025.shp", quiet = TRUE) %>%
+  st_transform(crs = 4326) %>%
   filter(Region != "AK") %>%
   mutate(Region_Merged = case_when(
     Region %in% c("HG", "WC", "NE", "NW") ~ "Northern",
@@ -391,7 +379,7 @@ pal_regions <- colorFactor(
   levels  = names(region_colors)
 )
 
-# ── 7. Regions legend (custom HTML, same approach as the old species legend) ───
+# ── 7. Regions legend (custom HTML) ────────────────────────────────────────────
 region_legend_html <- htmltools::tags$div(
   style = "background:white;padding:10px 14px;border-radius:6px;box-shadow:0 1px 5px rgba(0,0,0,.3);font-family:sans-serif;font-size:12px;",
   htmltools::tags$b("Analysis Regions"),
@@ -401,11 +389,14 @@ region_legend_html <- htmltools::tags$div(
     region_colors[.x], .x)), collapse = ""))
 )
 
-# ── 8. Add regions, transects and legend to the map ────────────────────────────
-m_full <- m %>%
+# ── 8. Build the full map in one pipeline ──────────────────────────────────────
+m_full <- leaflet() %>%
+  addProviderTiles(providers$Esri.WorldGrayCanvas) %>%
+  
   # Custom panes: regions/transects sit BELOW circle markers (overlayPane = 400)
   addMapPane("regionsPane",   zIndex = 240) %>%
   addMapPane("transectsPane", zIndex = 260) %>%
+  
   addPolygons(
     data        = regions,
     fillColor   = ~pal_regions(Region),
@@ -416,6 +407,7 @@ m_full <- m %>%
     group       = "Analysis Regions",
     options     = pathOptions(pane = "regionsPane")
   ) %>%
+  
   addPolylines(
     data             = transects_sf,
     color            = "darkgreen",
@@ -432,6 +424,22 @@ m_full <- m %>%
     group   = "Transects",
     options = pathOptions(pane = "transectsPane")
   ) %>%
+  
+  # All site markers in one vectorised call
+  addCircleMarkers(
+    data        = sites_plot,
+    lng         = ~Long,
+    lat         = ~Lat,
+    radius      = 6,
+    stroke      = TRUE,
+    color       = "#ffffff",
+    weight      = 1.5,
+    fillColor   = "#3A86FF",
+    fillOpacity = 0.9,
+    popup       = ~popup,
+    label       = ~site_name
+  ) %>%
+  
   addControl(region_legend_html, position = "bottomright") %>%
   addLayersControl(
     overlayGroups = c("Analysis Regions", "Transects"),
@@ -441,8 +449,6 @@ m_full <- m %>%
 
 m_full
 ```
-
-{{< pagebreak >}}
 
 ```{r}
 #| label: setup - trend results
@@ -539,10 +545,11 @@ merged_table <- merged_table %>%
 ```
 
 ```{r}
+#| label: regional model covariates prep
 #| echo: false
 #| warning: false  
 #| message: false
-#| label: regionmodelcov-prep
+
 
 region.cov.slope.summary.singlet <- read.csv("Data/Analyzed/region.slope.summary.singlet.csv")
 
@@ -618,6 +625,153 @@ final_table <- final_table %>%
 col_names <- c("Species", rep(c("Estimate ± 95%CI", "P-value"), length(regions)))
 ```
 
+```{r}
+#| label: setup - slider occupancy map
+#| include: false
+#| echo: false
+#| eval: true
+#| warning: false
+#| message: false
+#site-year summary for interactive slider maps code
+#this creates a map that can go between species and show the slider maps with P(occupancy for all the sites where the species was detected)
+library(dplyr)
+library(plotly)
+
+old_tojson <- options(htmlwidgets.TOJSON_ARGS = NULL)
+
+make_occ_species_map <- function(species,
+                                 path   = "Data/Analyzed/OccupancyTables/") {                      # NEW
+  pal_hex <- RColorBrewer::brewer.pal(9, "OrRd")
+  pal_fun <- scales::col_numeric(pal_hex, domain = c(0, 1), na.color = "#bdbdbd")
+  
+  occ_all <- lapply(names(species), function(sp) {
+    read.csv(file.path(path, paste0("site_year_occupancy_", sp, ".csv"))) |>
+      mutate(sp_code = sp)
+  }) |>
+    bind_rows() |>
+    mutate(
+      surveyed   = as.logical(surveyed),
+      detected   = suppressWarnings(as.numeric(detected)),
+      p_occupied = suppressWarnings(as.numeric(p_occupied))
+    ) |>
+    filter(surveyed) |>
+    mutate(
+      status = ifelse(detected %in% 1, "Detected", "Not detected"),
+      symbol = ifelse(status == "Detected", "circle", "triangle-up"),
+      fill   = pal_fun(pmin(pmax(p_occupied, 0), 1)),
+      hover  = paste0(
+        "<b>", site, "</b><br>", region,
+        "<br>Year: ", year,
+        "<br>", status, " (", n_visits, " visits)",
+        "<br>P(occupied): ", sprintf("%.2f", p_occupied),
+        "<br>\u03c8 expected: ",
+        sprintf("%.2f [%.2f\u2013%.2f]", psi_expected, psi_expected_lo95, psi_expected_hi95)
+      )
+    ) |>
+    arrange(sp_code, year, site)
+  
+  # NEW: drop any species with no surveyed rows (avoids empty menu entries / min() of nothing)
+  species <- species[names(species) %in% unique(occ_all$sp_code)]
+  
+  lon_rng <- range(occ_all$long, na.rm = TRUE) + c(-1, 1)
+  lat_rng <- range(occ_all$lat,  na.rm = TRUE) + c(-0.5, 0.5)
+  off_lat <- 0; off_lon <- 0
+  
+  p <- plot_ly() |>                                   
+    add_trace(
+      type = "scattergeo", mode = "markers",
+      lat = off_lat, lon = off_lon, hoverinfo = "skip", showlegend = FALSE,
+      marker = list(
+        color = 0, cmin = 0, cmax = 1,
+        colorscale = list(seq(0, 1, length.out = length(pal_hex)), pal_hex),
+        showscale = TRUE,
+        colorbar = list(title = list(text = "P(occupied)"), len = 0.45, y = 0.35,
+                        tickvals = seq(0, 1, 0.25))
+      )
+    ) |>
+    add_trace(type = "scattergeo", mode = "markers", lat = off_lat, lon = off_lon,
+              name = "Detected", hoverinfo = "skip",
+              marker = list(symbol = "circle", size = 11, color = "#bdbdbd",
+                            line = list(color = "#4d4d4d", width = 1))) |>
+    add_trace(type = "scattergeo", mode = "markers", lat = off_lat, lon = off_lon,
+              name = "Not detected", hoverinfo = "skip",
+              marker = list(symbol = "triangle-up", size = 11, color = "#bdbdbd",
+                            line = list(color = "#4d4d4d", width = 1)))
+  n_fixed <- 3
+  
+  key <- occ_all |> distinct(sp_code, year) |>
+    filter(sp_code %in% names(species)) |>
+    mutate(sp_code = factor(sp_code, levels = names(species))) |>
+    arrange(sp_code, year) |>
+    mutate(sp_code = as.character(sp_code))
+  
+  first_sp <- names(species)[1]
+  first_yr <- min(key$year[key$sp_code == first_sp])
+  
+  for (i in seq_len(nrow(key))) {
+    sub <- occ_all |> filter(sp_code == key$sp_code[i], year == key$year[i])
+    p <- p |> add_trace(
+      type = "scattergeo", mode = "markers",
+      lat = sub$lat, lon = sub$long,
+      text = sub$hover, hoverinfo = "text",
+      name = paste(key$sp_code[i], key$year[i]), showlegend = FALSE,
+      visible = key$sp_code[i] == first_sp & key$year[i] == first_yr,
+      marker = list(symbol = sub$symbol, color = sub$fill, size = 12, opacity = 0.95,
+                    line = list(color = "#4d4d4d", width = 1))
+    )
+  }
+  
+  vis <- function(sp, yr) as.list(c(rep(TRUE, n_fixed),
+                                    key$sp_code == sp & key$year == yr))
+  
+  slider_for <- function(sp) {
+    yrs <- key$year[key$sp_code == sp]
+    list(list(
+      active = 0,
+      currentvalue = list(prefix = "Year: ", font = list(size = 16)),
+      pad = list(t = 10),
+      steps = lapply(yrs, function(y) list(
+        label = as.character(y), method = "restyle",
+        args = list("visible", vis(sp, y))
+      ))
+    ))
+  }
+  
+  buttons <- lapply(names(species), function(sp) {
+    y1 <- min(key$year[key$sp_code == sp])
+    list(label = paste0(sp, " \u2013 ", species[[sp]]),             # NEW: code + common name
+         method = "update",
+         args = list(list(visible = vis(sp, y1)),
+                     list(sliders = slider_for(sp))))
+  })
+  
+  p |> layout(
+    margin = list(t = 50, b = 80, l = 10, r = 10),                   # NEW: tighter margins
+    updatemenus = list(list(
+      type = "dropdown",                                             # NEW: dropdown, not buttons
+      active = 0, showactive = TRUE,
+      x = 0, xanchor = "left", y = 1.06, yanchor = "top",
+      bgcolor = "white", bordercolor = "#9e9e9e",
+      buttons = buttons
+    )),
+    sliders = slider_for(first_sp),
+    geo = list(
+      domain = list(x = c(0, 1), y = c(0, 1)),                       # NEW: map fills the plot area
+      scope = "north america", resolution = 50,
+      projection = list(type = "mercator"),
+      showland = TRUE,  landcolor  = "#f7f7f7",
+      showocean = TRUE, oceancolor = "#e8f0f5",
+      showlakes = TRUE, lakecolor  = "#e8f0f5",
+      showcountries = TRUE, countrycolor = "#9e9e9e",
+      showsubunits  = TRUE, subunitcolor = "#c8c8c8",
+      lonaxis = list(range = lon_rng),
+      lataxis = list(range = lat_rng)
+    ),
+    legend = list(x = 1.02, y = 0.9)
+  )
+}
+```
+
 # Executive Summary
 
 The North American Bat Monitoring (NABat) program is a multi-agency initiative administered by the US Geological Survey (USGS). In 2024, the North by Northwest (NNW) Bat Hub was formed by combining the former Alberta Hub and the BC and Southeast Alaska (BC-SE_AK) Hub. The NNW Bat Hub leads the NABat program within British Columbia, with key support from provincial and state representatives and WCSC. In 2025, 57 grid cells throughout British Columbia were monitored. Results indicate that bat populations across British Columbia remain stable, with some key species showing small positive trends, including Little Brown Myotis and Eastern Red Bat. Given growing threats to bat populations in BC, continued monitoring is essential to detect any significant changes.
@@ -670,9 +824,11 @@ Acoustic recording is a cost-effective method for monitoring bat populations acr
 
 ## Updates in Modelling Approaches
 
-Bat monitoring data can be analyzed using different statistical approaches, each with distinct assumptions and outputs. In previous years, trends in British Columbia were assessed using activity trend models, which examine changes in relative acoustic activity over time. These models provide a straightforward measure of whether bat detections are increasing, decreasing, or remaining stable across the monitoring network. In 2025, we also ran dynamic occupancy models for the first time, allowing us to compare results between the two approaches and assess the complementary information each provides.
+Bat monitoring data can be analyzed using different statistical approaches, each with distinct assumptions and outputs. Activity trend models examine changes in relative acoustic activity over time, providing a straightforward measure of whether bat detections are increasing, decreasing, or remaining stable across the monitoring network.
 
-Dynamic occupancy models, estimate the probability that a species occupies a given site while explicitly accounting for imperfect detection. Rather than treating a non-detection as an absence, these models distinguish between a species being truly absent and simply going undetected, an important consideration given the variable detectability of bats discussed above. They also track colonization and extinction probabilities across sites over time, providing insight into range shifts and local population dynamics.
+Dynamic occupancy models take a different approach, estimating the probability that a species occupies a given site, while explicitly accounting for imperfect detection. Rather than treating a non-detection as an absence, these models distinguish between a species being truly absent versus simply going undetected, an important consideration given the variable detectability of bats discussed above. They also track colonization and extinction probabilities across sites over time, providing insight into range shifts and local population dynamics.
+
+In 2025, both model types were run to examine differences in results and assess the complementary information each approach provides.
 
 # Methods
 
@@ -808,7 +964,7 @@ Models were fit in a Bayesian framework using JAGS via the jagsUI package in R, 
 
 ## Species Detection
 
-In 2025, all species previously documented in BC were detected. The manually verified detections varied among grid cell and regions (@fig-map). The most widely identified species as well as the most geographically distributed bats that were confirmed through manual ID were the Little Brown Bat followed by the Silver-haired Bat. Any notable species detection are addressed in the discussion
+In 2025, all species previously documented in BC were detected. The manually verified detections varied among grid cell and regions (@fig-map). The most widely identified species as well as the most geographically distributed bats that were confirmed through manual ID were the Little Brown Bat followed by the Silver-haired Bat. Any notable species detection are addressed in the discussion.
 
 ```{r}
 #| echo: false
@@ -822,7 +978,7 @@ In 2025, all species previously documented in BC were detected. The manually ver
 #| label: fig-map
 
 # ── Render ─────────────────────────────────────────────────────────────────────
-if (knitr::pandoc_to("html")) {
+if (knitr::is_html_output()) {
   m_full
 } else {
   dir.create(file.path(getwd(), "Figures"), showWarnings = FALSE)
@@ -918,25 +1074,25 @@ if (knitr::is_html_output()) {
     column_spec(c(3, 5, 7, 9), width = "1.5cm") %>%
     kable_styling(font_size = 9, full_width = TRUE) %>%
     scroll_box(width = "100%", extra_css = "overflow-x: auto; min-width: 900px;")
-
+  
 } else {
   regions_top    <- c("Kootenay Region", "Northern Region")
   regions_bottom <- c("Okanagan Region", "South Coastal Region")
-
+  
   make_gt_subtable <- function(data, region_group) {
     cols <- c("Species", paste0(rep(region_group, each = 2), c("_trend_ci", "_p_val")))
     sub_data <- data %>% select(all_of(cols))
-
+    
     # Rename columns to simple names for gt
     new_names <- c("Species", paste0(rep(seq_along(region_group), each = 2), 
-                                      c("_est", "_p")))
+                                     c("_est", "_p")))
     names(sub_data) <- new_names
-
+    
     tbl <- gt(sub_data) %>%
       fmt_passthrough(everything()) %>%
       fmt(columns = everything(),
           fns = function(x) ifelse(is.na(x), "", x))
-
+    
     # Add spanner headers for each region
     for (i in seq_along(region_group)) {
       tbl <- tbl %>%
@@ -945,7 +1101,7 @@ if (knitr::is_html_output()) {
           columns = c(paste0(i, "_est"), paste0(i, "_p"))
         )
     }
-
+    
     # Rename columns to display names
     rename_list <- list("Species" = "Species")
     for (i in seq_along(region_group)) {
@@ -962,46 +1118,63 @@ if (knitr::is_html_output()) {
       cols_align(
         align = "center",
         columns = ends_with(c("_est", "_p"))
-        ) %>%
+      ) %>%
       tab_options(
         table.font.size = px(14),
         data_row.padding = px(2)
       )
-
+    
     return(tbl)
   }
-
+  
   tbl_top    <- make_gt_subtable(final_table, regions_top)
   tbl_bottom <- make_gt_subtable(final_table, regions_bottom)
-
+  
   knit_print(tbl_top)
 }
 ```
 
-```{r}
-#| echo: false  
-#| eval: !expr knitr::is_latex_output()
-#| tbl-pos: 'H'
-
-knit_print(tbl_bottom)
-
-```
-
-```{=latex}
-\FloatBarrier
-```
-
 ## Dynamic Occupancy Models
 
-Across the 17 bat species modeled over the 9 years, no species showed a clear decline in occupancy in BC. Several species showed increases, and the rest were stable or showed too much uncertainty to draw conclusions regarding trends (E.g., TABR, PAHE).
+Models converged for 15 of the 17 bat species in British Columbia. ANPA, PAHE and TABR had too few detection and could not be modeled.
 
-Species showing clear increases in occupancy (BC models): MYLU. MYEV, MYVO, MYVU, MYCA, MYCI, LABO. LABO showed the strongest increase (0.22 to 0.59). MYLU was the most widespread species overall going from \~89% to 97% occupancy. Increases generally driven by colonization rates exceeding extinction rates–bats showing up at sites faster than they are leaving occupied ones. 
+\
+ANPA and LABO needs to be explored more carefully since there was a big increase in the detection probability of 2025. Need to explore the data more carefully to see the reason for it.
 
-Species with stable or uncertain trends: EPFU, LACI, LANO, EUMA, COTO, MYTH. ANPA is a special case– showing a massive lambda value in the BC-only model (and the BC + AK to some extent), but as per the note below, this is mainly because of an artifact of going from near zero occupancy to still-low occupancy, so the ratio is uncertain, reflected by the wide credible intervals. 
+![](Figures/DOccupancy/figB_bc_trends_all_species.png)
 
-Poorly estimated species: PAHE and TABR had extremely low detection probabilities (0.5-0.7%), leading to poor model convergence and very wide credible intervals-interpret with caution or just state they are data-deficient (models with that low of detection rates are basically meaningless). 
+![](Figures/DOccupancy/figC_regional_trends_all_species.png)
 
-Detection: Temperature was the most consistent detection covariate–warmer nights equate to higher detection for most species. There were some clutter effects on detection probability that were species-specific. Julian date effects were mixed across species. 
+```{r}
+#| label: fig-occ-slider
+#| fig-cap: "Probability of occupancy per site by year for 15 bat species in British Columbia with reliable occupancy estimates. Use the buttons to switch species and the slider to change year. Circles = detected; triangles = not detected that year; colour = model inference for probability of occupancy."
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-height: 8 
+
+sp_list <- c(
+  ANPA  = "Pallid bat",
+  COTO = "Townsend's big-eared bat",
+  EPFU = "Big brown bat",
+  EUMA = "Spotted bat",
+  LABO = "Eastern red bat",
+  LACI = "Hoary bat",
+  LANO = "Silver-haired bat",
+  MYCA = "California myotis",
+  MYCI = "Western small-footed Myotis",
+  MYEV = "Long-eared Myotis", 
+  MYLU = "Little brown Myotis",
+  MYSE = "Northern Myotis",
+  MYTH = "Fringed Myotis",
+  MYVO = "Long-legged Myotis",
+  MYYU = "Yuma Myotis"
+)
+
+if (knitr::pandoc_to("html")) {
+  make_occ_species_map(sp_list)
+}
+```
 
 # Discussion
 
@@ -1041,10 +1214,216 @@ The BC NABat program has yielded a large and robust acoustic dataset that provid
 
 - **Adding new grid cells.** Efforts will continue to be made to monitor as many of the same grid cells as possible, as the power of the dataset improves with each additional year. Moreover, looking for new opportunities to add new grid cells especially in under sampled regions of the province can help fill knowledge gaps for species distributions. New cells could also be added within ranges of species that are not widespread but easily monitored using acoustics. For example, Fringed Myotis and Spotted Bats are highly suited to acoustic surveillance, but only occur within a small portion of the grid cells being monitored currently
 
-{{< pagebreak >}}
-
-{{< pagebreak >}}
-
 # Appendix A
+
+## Pallid bat (*Antrozous pallidus*)
+
+![](Figures/DOccupancy/fig1_covariate_effects_ANPA.png)
+
+![](Figures/DOccupancy/fig2_bc_dynamics_ANPA.png)
+
+![](Figures/DOccupancy/fig4_regional_dynamics_ANPA.png)
+
+![](Figures/DOccupancy/fig5_detection_by_year_ANPA.png)
+
+::: {.content-visible when-format="pdf"}
+![](Figures/DOccupancy/fig7_site_map_by_year_ANPA.png)
+:::
+
+## Townsend's big-eared bat (*Corynorhinus townsendii*)
+
+![](Figures/DOccupancy/fig1_covariate_effects_COTO.png)
+
+![](Figures/DOccupancy/fig2_bc_dynamics_COTO.png)
+
+![](Figures/DOccupancy/fig4_regional_dynamics_COTO.png)
+
+![](Figures/DOccupancy/fig5_detection_by_year_COTO.png)
+
+::: {.content-visible when-format="pdf"}
+![](Figures/DOccupancy/fig7_site_map_by_year_COTO.png)
+:::
+
+## Big brown bat (*Eptesicus fuscus*)
+
+![](Figures/DOccupancy/fig1_covariate_effects_EPFU.png)
+
+![](Figures/DOccupancy/fig2_bc_dynamics_EPFU.png)
+
+![](Figures/DOccupancy/fig4_regional_dynamics_EPFU.png)
+
+![](Figures/DOccupancy/fig5_detection_by_year_EPFU.png)
+
+::: {.content-visible when-format="pdf"}
+![](Figures/DOccupancy/fig7_site_map_by_year_EPFU.png)
+:::
+
+## Spotted bat (*Euderma maculatum*)
+
+![](Figures/DOccupancy/fig1_covariate_effects_EUMA.png)
+
+![](Figures/DOccupancy/fig2_bc_dynamics_EUMA.png)
+
+![](Figures/DOccupancy/fig4_regional_dynamics_EUMA.png)
+
+![](Figures/DOccupancy/fig5_detection_by_year_EUMA.png)
+
+::: {.content-visible when-format="pdf"}
+![](Figures/DOccupancy/fig7_site_map_by_year_EUMA.png)
+:::
+
+## Eastern-red bat (*Lasiurus borealis*)
+
+![](Figures/DOccupancy/fig1_covariate_effects_LABO.png)
+
+![](Figures/DOccupancy/fig2_bc_dynamics_LABO.png)
+
+![](Figures/DOccupancy/fig4_regional_dynamics_LABO.png)
+
+![](Figures/DOccupancy/fig5_detection_by_year_LABO.png)
+
+::: {.content-visible when-format="pdf"}
+![](Figures/DOccupancy/fig7_site_map_by_year_LABO.png)
+:::
+
+## Hoary bat (*Lasiurus cinereus*)
+
+![](Figures/DOccupancy/fig1_covariate_effects_LACI.png)
+
+![](Figures/DOccupancy/fig2_bc_dynamics_LACI.png)
+
+![](Figures/DOccupancy/fig4_regional_dynamics_LACI.png)
+
+![](Figures/DOccupancy/fig5_detection_by_year_LACI.png)
+
+::: {.content-visible when-format="pdf"}
+![](Figures/DOccupancy/fig7_site_map_by_year_LACI.png)
+:::
+
+## Silver-haired bat (*Lasionycteris noctivagans*)
+
+![](Figures/DOccupancy/fig1_covariate_effects_LANO.png)
+
+![](Figures/DOccupancy/fig2_bc_dynamics_LANO.png)
+
+![](Figures/DOccupancy/fig4_regional_dynamics_LANO.png)
+
+![](Figures/DOccupancy/fig5_detection_by_year_LANO.png)
+
+::: {.content-visible when-format="pdf"}
+![](Figures/DOccupancy/fig7_site_map_by_year_LANO.png)
+:::
+
+## California Myotis (*Myotis californicus*)
+
+![](Figures/DOccupancy/fig1_covariate_effects_MYCA.png)
+
+![](Figures/DOccupancy/fig2_bc_dynamics_MYCA.png)
+
+![](Figures/DOccupancy/fig4_regional_dynamics_MYCA.png)
+
+![](Figures/DOccupancy/fig5_detection_by_year_MYCA.png)
+
+::: {.content-visible when-format="pdf"}
+![](Figures/DOccupancy/fig7_site_map_by_year_MYCA.png)
+:::
+
+## Western small-footed Myotis (*Myotis ciliolabrum*)
+
+![](Figures/DOccupancy/fig1_covariate_effects_MYCI.png)
+
+![](Figures/DOccupancy/fig2_bc_dynamics_MYCI.png)
+
+![](Figures/DOccupancy/fig4_regional_dynamics_MYCI.png)
+
+![](Figures/DOccupancy/fig5_detection_by_year_MYCI.png)
+
+::: {.content-visible when-format="pdf"}
+![](Figures/DOccupancy/fig7_site_map_by_year_MYCI.png)
+:::
+
+## Long-eared Myotis (*Myotis evotis*)
+
+![](Figures/DOccupancy/fig1_covariate_effects_MYEV.png)
+
+![](Figures/DOccupancy/fig2_bc_dynamics_MYEV.png)
+
+![](Figures/DOccupancy/fig4_regional_dynamics_MYEV.png)
+
+![](Figures/DOccupancy/fig5_detection_by_year_MYEV.png)
+
+::: {.content-visible when-format="pdf"}
+![](Figures/DOccupancy/fig7_site_map_by_year_MYEV.png)
+:::
+
+## Little brown Myotis (*Myotis lucifugus*)
+
+![](Figures/DOccupancy/fig1_covariate_effects_MYLU.png)
+
+![](Figures/DOccupancy/fig2_bc_dynamics_MYLU.png)
+
+![](Figures/DOccupancy/fig4_regional_dynamics_MYLU.png)
+
+![](Figures/DOccupancy/fig5_detection_by_year_MYLU.png)
+
+::: {.content-visible when-format="pdf"}
+![](Figures/DOccupancy/fig7_site_map_by_year_MYLU.png)
+:::
+
+## Northern Myotis (*Myotis septentrionalis*)
+
+![](Figures/DOccupancy/fig1_covariate_effects_MYSE.png)
+
+![](Figures/DOccupancy/fig2_bc_dynamics_MYSE.png)
+
+![](Figures/DOccupancy/fig4_regional_dynamics_MYSE.png)
+
+![](Figures/DOccupancy/fig5_detection_by_year_MYSE.png)
+
+::: {.content-visible when-format="pdf"}
+![](Figures/DOccupancy/fig7_site_map_by_year_MYSE.png)
+:::
+
+## Fringed Myotis (*Myotis thysanodes*)
+
+![](Figures/DOccupancy/fig1_covariate_effects_MYTH.png)
+
+![](Figures/DOccupancy/fig2_bc_dynamics_MYTH.png)
+
+![](Figures/DOccupancy/fig4_regional_dynamics_MYTH.png)
+
+![](Figures/DOccupancy/fig5_detection_by_year_MYTH.png)
+
+::: {.content-visible when-format="pdf"}
+![](Figures/DOccupancy/fig7_site_map_by_year_MYTH.png)
+:::
+
+## Long-legged Myotis (*Myotis volans*)
+
+![](Figures/DOccupancy/fig1_covariate_effects_MYVO.png)
+
+![](Figures/DOccupancy/fig2_bc_dynamics_MYVO.png)
+
+![](Figures/DOccupancy/fig4_regional_dynamics_MYVO.png)
+
+![](Figures/DOccupancy/fig5_detection_by_year_MYVO.png)
+
+::: {.content-visible when-format="pdf"}
+![](Figures/DOccupancy/fig7_site_map_by_year_MYVO.png)
+:::
+
+## Yuma Myotis (*Myotis yumanensis*)
+
+![](Figures/DOccupancy/fig1_covariate_effects_MYYU.png)
+
+![](Figures/DOccupancy/fig2_bc_dynamics_MYYU.png)
+
+![](Figures/DOccupancy/fig4_regional_dynamics_MYYU.png)
+
+![](Figures/DOccupancy/fig5_detection_by_year_MYYU.png)
+
+::: {.content-visible when-format="pdf"}
+![](Figures/DOccupancy/fig7_site_map_by_year_MYYU.png)
+:::
 
 # Literature Cited
