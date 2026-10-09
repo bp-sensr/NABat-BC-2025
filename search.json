@@ -32,7 +32,7 @@
     "href": "NABat-BC_2016-2025.html#updates-in-modelling-approaches",
     "title": "North American Bat Monitoring Program in British Columbia",
     "section": "Updates in Modelling Approaches",
-    "text": "Updates in Modelling Approaches\nBat monitoring data can be analyzed using different statistical approaches, each with distinct assumptions and outputs. In previous years, trends in British Columbia were assessed using activity trend models, which examine changes in relative acoustic activity over time. These models provide a straightforward measure of whether bat detections are increasing, decreasing, or remaining stable across the monitoring network. In 2025, we also ran dynamic occupancy models for the first time, allowing us to compare results between the two approaches and assess the complementary information each provides.\nDynamic occupancy models, estimate the probability that a species occupies a given site while explicitly accounting for imperfect detection. Rather than treating a non-detection as an absence, these models distinguish between a species being truly absent and simply going undetected, an important consideration given the variable detectability of bats discussed above. They also track colonization and extinction probabilities across sites over time, providing insight into range shifts and local population dynamics."
+    "text": "Updates in Modelling Approaches\nBat monitoring data can be analyzed using different statistical approaches, each with distinct assumptions and outputs. Activity trend models examine changes in relative acoustic activity over time, providing a straightforward measure of whether bat detections are increasing, decreasing, or remaining stable across the monitoring network.\nDynamic occupancy models take a different approach, estimating the probability that a species occupies a given site, while explicitly accounting for imperfect detection. Rather than treating a non-detection as an absence, these models distinguish between a species being truly absent versus simply going undetected, an important consideration given the variable detectability of bats discussed above. They also track colonization and extinction probabilities across sites over time, providing insight into range shifts and local population dynamics.\nIn 2025, both model types were run to examine differences in results and assess the complementary information each approach provides."
   },
   {
     "objectID": "NABat-BC_2016-2025.html#data-collection",
@@ -60,7 +60,7 @@
     "href": "NABat-BC_2016-2025.html#species-detection",
     "title": "North American Bat Monitoring Program in British Columbia",
     "section": "Species Detection",
-    "text": "Species Detection\nIn 2025, all species previously documented in BC were detected. The manually verified detections varied among grid cell and regions (Figure 3). The most widely identified species as well as the most geographically distributed bats that were confirmed through manual ID were the Little Brown Bat followed by the Silver-haired Bat. Any notable species detection are addressed in the discussion\n\n\n\n\n\n\n\n\nFigure 3: NABat survey efforts in 2025 within British Columbia. Analysis regions were defined by Wildlife Conservation Society Canada (WCSC) based on species ranges maps to group areas with similar species compositions."
+    "text": "Species Detection\nIn 2025, all species previously documented in BC were detected. The manually verified detections varied among grid cell and regions (Figure 3). The most widely identified species as well as the most geographically distributed bats that were confirmed through manual ID were the Little Brown Bat followed by the Silver-haired Bat. Any notable species detection are addressed in the discussion.\n\n\n\n\n\n\n\n\nFigure 3: NABat survey efforts in 2025 within British Columbia. Analysis regions were defined by Wildlife Conservation Society Canada (WCSC) based on species ranges maps to group areas with similar species compositions."
   },
   {
     "objectID": "NABat-BC_2016-2025.html#activity-trend-models",
@@ -74,7 +74,7 @@
     "href": "NABat-BC_2016-2025.html#dynamic-occupancy-models",
     "title": "North American Bat Monitoring Program in British Columbia",
     "section": "Dynamic Occupancy Models",
-    "text": "Dynamic Occupancy Models\nAcross the 17 bat species modeled over the 9 years, no species showed a clear decline in occupancy in BC. Several species showed increases, and the rest were stable or showed too much uncertainty to draw conclusions regarding trends (E.g., TABR, PAHE).\nSpecies showing clear increases in occupancy (BC models): MYLU. MYEV, MYVO, MYVU, MYCA, MYCI, LABO. LABO showed the strongest increase (0.22 to 0.59). MYLU was the most widespread species overall going from ~89% to 97% occupancy. Increases generally driven by colonization rates exceeding extinction rates–bats showing up at sites faster than they are leaving occupied ones. \nSpecies with stable or uncertain trends: EPFU, LACI, LANO, EUMA, COTO, MYTH. ANPA is a special case– showing a massive lambda value in the BC-only model (and the BC + AK to some extent), but as per the note below, this is mainly because of an artifact of going from near zero occupancy to still-low occupancy, so the ratio is uncertain, reflected by the wide credible intervals. \nPoorly estimated species: PAHE and TABR had extremely low detection probabilities (0.5-0.7%), leading to poor model convergence and very wide credible intervals-interpret with caution or just state they are data-deficient (models with that low of detection rates are basically meaningless). \nDetection: Temperature was the most consistent detection covariate–warmer nights equate to higher detection for most species. There were some clutter effects on detection probability that were species-specific. Julian date effects were mixed across species."
+    "text": "Dynamic Occupancy Models\nModels converged for 15 of the 17 bat species in British Columbia. ANPA, PAHE and TABR had too few detection and could not be modeled.\n\nANPA and LABO needs to be explored more carefully since there was a big increase in the detection probability of 2025. Need to explore the data more carefully to see the reason for it.\n\n\n\n\n\n\n\n\n\n\nFigure 4: Probability of occupancy per site by year for 15 bat species in British Columbia with reliable occupancy estimates. Use the buttons to switch species and the slider to change year. Circles = detected; triangles = not detected that year; colour = model inference for probability of occupancy."
   },
   {
     "objectID": "NABat-BC_2016-2025.html#species-presence",
@@ -103,5 +103,110 @@
     "title": "North American Bat Monitoring Program in British Columbia",
     "section": "Looking Forward",
     "text": "Looking Forward\nThe BC NABat program has yielded a large and robust acoustic dataset that provides solid baseline information on distribution and relative abundance of 12 of 15 resident BC bat species. The data that has been collected so far are an invaluable reference point for BC’s bat distributions and activity that improve with each additional year of monitoring. Key considerations for the future of the program include:\n\nManual Verification Efficiency. This was the first year that the BC monitoring program reduced the proportion of manual vetting carried out in the recordings to ~50% based on the findings from Stratton et al. (2022). Careful consideration of these results compared to previous years will be considered as a guide for future models and analyses.\nTransect Sampling. Transects are a relatively high labour/effort source of data than stationary detectors that require participants to work late into the night. They also often do not collect many recordings of bats in BC relative to the stationary detectors. However, transects are still the only source of reliable estimates of relative abundance. While continuing to support current transect sampling efforts, the NNW Bat Hub will work along side other partners to also explore other methods of creating reliable abundance estimates that are less labour intensive.\nAdding new grid cells. Efforts will continue to be made to monitor as many of the same grid cells as possible, as the power of the dataset improves with each additional year. Moreover, looking for new opportunities to add new grid cells especially in under sampled regions of the province can help fill knowledge gaps for species distributions. New cells could also be added within ranges of species that are not widespread but easily monitored using acoustics. For example, Fringed Myotis and Spotted Bats are highly suited to acoustic surveillance, but only occur within a small portion of the grid cells being monitored currently"
+  },
+  {
+    "objectID": "NABat-BC_2016-2025.html#pallid-bat-antrozous-pallidus",
+    "href": "NABat-BC_2016-2025.html#pallid-bat-antrozous-pallidus",
+    "title": "North American Bat Monitoring Program in British Columbia",
+    "section": "Pallid bat (Antrozous pallidus)",
+    "text": "Pallid bat (Antrozous pallidus)"
+  },
+  {
+    "objectID": "NABat-BC_2016-2025.html#townsends-big-eared-bat-corynorhinus-townsendii",
+    "href": "NABat-BC_2016-2025.html#townsends-big-eared-bat-corynorhinus-townsendii",
+    "title": "North American Bat Monitoring Program in British Columbia",
+    "section": "Townsend’s big-eared bat (Corynorhinus townsendii)",
+    "text": "Townsend’s big-eared bat (Corynorhinus townsendii)"
+  },
+  {
+    "objectID": "NABat-BC_2016-2025.html#big-brown-bat-eptesicus-fuscus",
+    "href": "NABat-BC_2016-2025.html#big-brown-bat-eptesicus-fuscus",
+    "title": "North American Bat Monitoring Program in British Columbia",
+    "section": "Big brown bat (Eptesicus fuscus)",
+    "text": "Big brown bat (Eptesicus fuscus)"
+  },
+  {
+    "objectID": "NABat-BC_2016-2025.html#spotted-bat-euderma-maculatum",
+    "href": "NABat-BC_2016-2025.html#spotted-bat-euderma-maculatum",
+    "title": "North American Bat Monitoring Program in British Columbia",
+    "section": "Spotted bat (Euderma maculatum)",
+    "text": "Spotted bat (Euderma maculatum)"
+  },
+  {
+    "objectID": "NABat-BC_2016-2025.html#eastern-red-bat-lasiurus-borealis",
+    "href": "NABat-BC_2016-2025.html#eastern-red-bat-lasiurus-borealis",
+    "title": "North American Bat Monitoring Program in British Columbia",
+    "section": "Eastern-red bat (Lasiurus borealis)",
+    "text": "Eastern-red bat (Lasiurus borealis)"
+  },
+  {
+    "objectID": "NABat-BC_2016-2025.html#hoary-bat-lasiurus-cinereus",
+    "href": "NABat-BC_2016-2025.html#hoary-bat-lasiurus-cinereus",
+    "title": "North American Bat Monitoring Program in British Columbia",
+    "section": "Hoary bat (Lasiurus cinereus)",
+    "text": "Hoary bat (Lasiurus cinereus)"
+  },
+  {
+    "objectID": "NABat-BC_2016-2025.html#silver-haired-bat-lasionycteris-noctivagans",
+    "href": "NABat-BC_2016-2025.html#silver-haired-bat-lasionycteris-noctivagans",
+    "title": "North American Bat Monitoring Program in British Columbia",
+    "section": "Silver-haired bat (Lasionycteris noctivagans)",
+    "text": "Silver-haired bat (Lasionycteris noctivagans)"
+  },
+  {
+    "objectID": "NABat-BC_2016-2025.html#california-myotis-myotis-californicus",
+    "href": "NABat-BC_2016-2025.html#california-myotis-myotis-californicus",
+    "title": "North American Bat Monitoring Program in British Columbia",
+    "section": "California Myotis (Myotis californicus)",
+    "text": "California Myotis (Myotis californicus)"
+  },
+  {
+    "objectID": "NABat-BC_2016-2025.html#western-small-footed-myotis-myotis-ciliolabrum",
+    "href": "NABat-BC_2016-2025.html#western-small-footed-myotis-myotis-ciliolabrum",
+    "title": "North American Bat Monitoring Program in British Columbia",
+    "section": "Western small-footed Myotis (Myotis ciliolabrum)",
+    "text": "Western small-footed Myotis (Myotis ciliolabrum)"
+  },
+  {
+    "objectID": "NABat-BC_2016-2025.html#long-eared-myotis-myotis-evotis",
+    "href": "NABat-BC_2016-2025.html#long-eared-myotis-myotis-evotis",
+    "title": "North American Bat Monitoring Program in British Columbia",
+    "section": "Long-eared Myotis (Myotis evotis)",
+    "text": "Long-eared Myotis (Myotis evotis)"
+  },
+  {
+    "objectID": "NABat-BC_2016-2025.html#little-brown-myotis-myotis-lucifugus",
+    "href": "NABat-BC_2016-2025.html#little-brown-myotis-myotis-lucifugus",
+    "title": "North American Bat Monitoring Program in British Columbia",
+    "section": "Little brown Myotis (Myotis lucifugus)",
+    "text": "Little brown Myotis (Myotis lucifugus)"
+  },
+  {
+    "objectID": "NABat-BC_2016-2025.html#northern-myotis-myotis-septentrionalis",
+    "href": "NABat-BC_2016-2025.html#northern-myotis-myotis-septentrionalis",
+    "title": "North American Bat Monitoring Program in British Columbia",
+    "section": "Northern Myotis (Myotis septentrionalis)",
+    "text": "Northern Myotis (Myotis septentrionalis)"
+  },
+  {
+    "objectID": "NABat-BC_2016-2025.html#fringed-myotis-myotis-thysanodes",
+    "href": "NABat-BC_2016-2025.html#fringed-myotis-myotis-thysanodes",
+    "title": "North American Bat Monitoring Program in British Columbia",
+    "section": "Fringed Myotis (Myotis thysanodes)",
+    "text": "Fringed Myotis (Myotis thysanodes)"
+  },
+  {
+    "objectID": "NABat-BC_2016-2025.html#long-legged-myotis-myotis-volans",
+    "href": "NABat-BC_2016-2025.html#long-legged-myotis-myotis-volans",
+    "title": "North American Bat Monitoring Program in British Columbia",
+    "section": "Long-legged Myotis (Myotis volans)",
+    "text": "Long-legged Myotis (Myotis volans)"
+  },
+  {
+    "objectID": "NABat-BC_2016-2025.html#yuma-myotis-myotis-yumanensis",
+    "href": "NABat-BC_2016-2025.html#yuma-myotis-myotis-yumanensis",
+    "title": "North American Bat Monitoring Program in British Columbia",
+    "section": "Yuma Myotis (Myotis yumanensis)",
+    "text": "Yuma Myotis (Myotis yumanensis)"
   }
 ]
