@@ -13,10 +13,12 @@ format:
     toc-expand: true
     toc-location: left
     css: styles.css
+    include-after-body: collapsible.html
   pdf:
     tbl-pos: "H"
     toc: true
     toc-depth: 3
+    toccolor: black
     number-sections: true
     colorlinks: true
     geometry:
@@ -974,6 +976,7 @@ In 2025, all species previously documented in BC were detected. The manually ver
 #| message: false
 #| include: true
 #| fig-align: center
+#| out-width: "100%"
 #| fig-cap: "NABat survey efforts in 2025 within British Columbia. Analysis regions were defined by Wildlife Conservation Society Canada (WCSC) based on species ranges maps to group areas with similar species compositions."
 #| label: fig-map
 
@@ -983,13 +986,27 @@ if (knitr::is_html_output()) {
 } else {
   dir.create(file.path(getwd(), "Figures"), showWarnings = FALSE)
   map_file <- file.path(getwd(), "Figures", "survey_map.png")
+  
+  # get the underlying leaflet widget (works for mapview or leaflet objects)
+  m_pdf <- if (inherits(m_full, "mapview")) m_full@map else m_full
+  
+  # allow fractional zoom so the view fits BC tightly instead of snapping out a level
+  m_pdf$x$options$zoomSnap  <- 0.25
+  m_pdf$x$options$zoomDelta <- 0.25
+  
+  # BC bounding box
+  m_pdf <- leaflet::fitBounds(m_pdf,
+                              lng1 = -139.1, lat1 = 48.2,
+                              lng2 = -114.0, lat2 = 60.1)
+  
   tryCatch({
     mapview::mapshot2(
-      m_full,
+      m_pdf,
       file    = map_file,
       delay   = 5,
-      vwidth  = 900,
-      vheight = 1100
+      vwidth  = 1100,   # BC is wider than tall in Web Mercator
+      vheight = 950,
+      zoom    = 2       # renders at 2x pixel density for a sharp print
     )
   }, error = function(e) {
     message("mapshot2 failed: ", e$message)
