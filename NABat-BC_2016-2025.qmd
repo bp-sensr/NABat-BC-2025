@@ -14,6 +14,7 @@ format:
     toc-location: left
     css: styles.css
     include-after-body: collapsible.html
+    lightbox: true
   pdf:
     tbl-pos: "H"
     toc: true
@@ -854,13 +855,13 @@ Wind energy farms has been linked to high mortality rates across all bat species
 
 Acoustic recording is a cost-effective method for monitoring bat populations across large geographic and temporal scales. However, several limitations affect the conclusions that can be drawn from these data:
 
-1.  **Imperfect species identification** — Unlike birds, bats rely on echolocation rather than song, and species with similar ecology and physiology often produce overlapping calls. While detectors are deployed to maximize recordings of diagnostic Search Phase calls, species identifiability will always vary depending on the local assemblage.
+1.  **Imperfect species identification** --- Unlike birds, bats rely on echolocation rather than song, and species with similar ecology and physiology often produce overlapping calls. While detectors are deployed to maximize recordings of diagnostic Search Phase calls, species identifiability will always vary depending on the local assemblage.
 
-2.  **Variable detectability** — Bat species are not equally detectable acoustically. Larger, wide-ranging species produce louder calls that travel farther, while smaller species with quieter calls or specialized habitat use are less reliably recorded. As a result, trend estimates cannot be produced for all species using acoustic methods alone.
+2.  **Variable detectability** --- Bat species are not equally detectable acoustically. Larger, wide-ranging species produce louder calls that travel farther, while smaller species with quieter calls or specialized habitat use are less reliably recorded. As a result, trend estimates cannot be produced for all species using acoustic methods alone.
 
-3.  **Data variability** — Many factors influence recording quality and bat activity, including wind speed, humidity, and local habitat. Additionally, stationary detectors cannot account for individual recapture, meaning acoustic data can only inform relative activity and occupancy.
+3.  **Data variability** --- Many factors influence recording quality and bat activity, including wind speed, humidity, and local habitat. Additionally, stationary detectors cannot account for individual recapture, meaning acoustic data can only inform relative activity and occupancy.
 
-4.  **Processing limitations** — Auto-ID software enables efficient processing of large datasets but has known high misclassification rates for bats, making manual verification necessary to ensure accurate results.
+4.  **Processing limitations** --- Auto-ID software enables efficient processing of large datasets but has known high misclassification rates for bats, making manual verification necessary to ensure accurate results.
 
 ## Updates in Modelling Approaches
 
@@ -876,7 +877,7 @@ In 2025, both model types were run to examine differences in results and assess 
 
 ## Data Collection
 
-The NABat monitoring program was established in BC in 2016 by WCSC and has sampled 65 grid cells in total. Cells were selected using the GRTSID system [@loeb2015Plan], based on accessibility, presence of bat habitat, suitable recorder sites, and where possible, a road suitable for a driving transect (30–45 km, relatively straight).
+The NABat monitoring program was established in BC in 2016 by WCSC and has sampled 65 grid cells in total. Cells were selected using the GRTSID system [@loeb2015Plan], based on accessibility, presence of bat habitat, suitable recorder sites, and where possible, a road suitable for a driving transect (30--45 km, relatively straight).
 
 ```{r}
 #| echo: false
@@ -934,7 +935,7 @@ Two to four stationary detectors were deployed across at least two quadrants per
 
 ### Transect Surveys
 
-Where possible, driving transects were conducted following @loeb2015Plan. Two replicates of a 30–35 km route are driven at 30–35 km/h with a rooftop detector, using straight roads that minimize switchbacks. Transects are conducted concurrently with stationary deployments.
+Where possible, driving transects were conducted following @loeb2015Plan. Two replicates of a 30--35 km route are driven at 30--35 km/h with a rooftop detector, using straight roads that minimize switchbacks. Transects are conducted concurrently with stationary deployments.
 
 ### Equipment
 
@@ -948,7 +949,7 @@ We used the same covariates for the activity trend models as @rae2022North. Wher
 
 Sun and moon positions were calculated with the astral package (v3.2) in Python. Sunset and sunrise times defined the night period for each site-night. Moon illumination was then calculated as the proportion of the lunar disc illuminated multiplied by the proportion of the night the moon spent above the horizon. Site elevation was extracted from the [Open-Meteo Elevation API](https://open-meteo.com/en/docs/elevation-api). Distance to clutter and percent clutter were recorded by grid leaders at deployment, and distance to water and water body type were derived from the [BC Freshwater Atlas](https://www2.gov.bc.ca/gov/content/data/geographic-data-services/topographic-data/freshwater).\
 \
-For the dynamic occupancy models, we explored additional factors that might influence colonization and extinction: distance to the nearest road and distance to the nearest timber harvest, each measured from the survey location to the closest feature. Road features came from the Human Footprint Index (HFI) layer under development by the Geospatial Centre at Biodiversity Pathways (unpublished data). Harvest features came from the Province of British Columbia’s [consolidated cutblocks layer.](https://www.arcgis.com/home/item.html?id=2e27a5d899fc4c33a32037d392c00767#overview) All continuous covariates were standardized by centering on the mean and dividing by the standard deviation. Missing values were imputed with the global mean before standardization.
+For the dynamic occupancy models, we explored additional factors that might influence colonization and extinction: distance to the nearest road and distance to the nearest timber harvest, each measured from the survey location to the closest feature. Road features came from the Human Footprint Index (HFI) layer under development by the Geospatial Centre at Biodiversity Pathways (unpublished data). Harvest features came from the Province of British Columbia's [consolidated cutblocks layer.](https://www.arcgis.com/home/item.html?id=2e27a5d899fc4c33a32037d392c00767#overview) All continuous covariates were standardized by centering on the mean and dividing by the standard deviation. Missing values were imputed with the global mean before standardization.
 
 Since 2022, insect activity has also been sampled along transect routes using vehicle-mounted sticky traps. Samples are identified to order, and we will evaluate insect abundance as a potential covariate of bat activity in future years.
 
@@ -960,9 +961,9 @@ Manual vetting largely follows the protocol of @reichert2018 and previous analys
 
 ### Subsetting for manual verification
 
-Starting in 2024, the NNW Bat Hub implemented manual vetting of only a subset of all the bioacoustic data collected under the NABat program. Given the project’s large scale, manually vetting all recordings is not feasible long-term. To address this, the NNW Bat Hub, in collaboration with WCSC and contractor Brian Paterson, developed procedures to ensure that selecting a subset of recordings for manual review minimizes biases in analytical results. These standards prioritize the accurate identification of rare and difficult-to-recognize species to maintain the integrity of models and analyses.
+Starting in 2024, the NNW Bat Hub implemented manual vetting of only a subset of all the bioacoustic data collected under the NABat program. Given the project's large scale, manually vetting all recordings is not feasible long-term. To address this, the NNW Bat Hub, in collaboration with WCSC and contractor Brian Paterson, developed procedures to ensure that selecting a subset of recordings for manual review minimizes biases in analytical results. These standards prioritize the accurate identification of rare and difficult-to-recognize species to maintain the integrity of models and analyses.
 
-To ensure data accuracy, manual verification was conducted based on the number of tagged recordings at each site. For sites with 200 or fewer tagged recordings, all non-noise recordings were manually reviewed. For sites with more than 200 tagged recordings, verification depended on the proportion of recordings assigned a species label. All tags for rare species (comprising ≤10% of prior years’ identifications) and commonly misidentified species were fully vetted. Specifically, all Eastern Red Bat (*Lasiurus borealis*) tags were manually reviewed due to frequent misclassification as Little Brown Bats (*Myotis lucifugus*). Additionally, recordings of common species were randomly selected for verification until 50% of total recordings were reviewed. If fewer than 50% of recordings had species tags, all classifier-assigned tags were manually verified, and “NoID” recordings were randomly selected until 50% of all recordings were reviewed.
+To ensure data accuracy, manual verification was conducted based on the number of tagged recordings at each site. For sites with 200 or fewer tagged recordings, all non-noise recordings were manually reviewed. For sites with more than 200 tagged recordings, verification depended on the proportion of recordings assigned a species label. All tags for rare species (comprising ≤10% of prior years' identifications) and commonly misidentified species were fully vetted. Specifically, all Eastern Red Bat (*Lasiurus borealis*) tags were manually reviewed due to frequent misclassification as Little Brown Bats (*Myotis lucifugus*). Additionally, recordings of common species were randomly selected for verification until 50% of total recordings were reviewed. If fewer than 50% of recordings had species tags, all classifier-assigned tags were manually verified, and "NoID" recordings were randomly selected until 50% of all recordings were reviewed.
 
 ## Statistical Analyses
 
@@ -1058,11 +1059,13 @@ Models were fit in a Bayesian framework using JAGS (Version 4.3.2) via the jagsU
 
 # Results
 
-2025 marked the tenth year of coordinated NABat sampling done in BC. A total of `` r samplingE$`Number of Grids`[samplingE$Year==2025] `` grid cells were sampled with the support of over 60 individuals including contractors, volunteers and staff members from BC Parks, BC WLRS, and BC Ministry of Forests. Grid leaders have also collected a total of 16 transect insect sticky trap samples in 2025, which will be added to previous years of data to explore the addition of them as an added covariate to transects (to be done in 2026?).
+2025 marked the tenth year of coordinated NABat sampling done in BC. A total of `` r samplingE$`Number of Grids`[samplingE$Year==2025] `` grid cells were sampled with the support of over 60 individuals including contractors, volunteers and staff members from BC Parks, BC WLRS, and BC Ministry of Forests. Grid leaders have also collected a total of 16 transect insect sticky trap samples in 2025, which will be added to previous years of data to explore the addition of them as an added covariate to transects.
 
 ## Species Detection
 
-In 2025, all species previously documented in BC were detected. Total acoustic activity varied substantially among grid cells and regions (@fig-map). @fig-map is an interactive map. Readers can zoom in to see the individual stationary monitoring sites (blue circles), and click a site to open a pop-up with a summary pie chart of total detections by species and year.
+All species previously documented in BC were detected in 2025. Total acoustic activity varied substantially among grid cells and regions (@fig-map). @fig-map is an interactive map. Readers can zoom in to see the individual stationary monitoring sites (blue circles), and click a site to open a pop-up with a summary pie chart of total detections by species and year.
+
+ANPA in a lot more sites in the southeast corner than in previous years (most was 6 different grids in 2022, in 2025 in 11 grids). all still within the area expected. LABO continues to expand with detections all the way to the most northern grid cell (need to confirm this). MYCI detections on the island confirm this. MYSE also increasing further west in the north. MYTH all the way to the north (need to confirm)
 
 ```{r}
 #| echo: false
@@ -1126,19 +1129,19 @@ if (knitr::is_html_output()) {
 
 ## Activity and Abundance Trend Models
 
-We estimated yearly trends in nightly acoustic activity for `r sum(merged_table$stationary_trend != "", na.rm = TRUE)` of BC's 15 resident species. Transect data was sufficient to estimate trends for `r sum(merged_table$transect_trend != "", na.rm = TRUE)` species in BC (@tbl-modelcov). Of the stationary models, seven species showed statistically significant positive trends (p \< 0.05):
+We estimated yearly trends in nightly acoustic activity for `r sum(merged_table$stationary_trend != "", na.rm = TRUE)` of BC's 15 resident species. Transect data was sufficient to estimate trends for `r sum(merged_table$transect_trend != "", na.rm = TRUE)` species in BC (@tbl-modelcov). Of the stationary models, four species showed statistically significant positive trends (p \< 0.05)
 
-- Townsend's Big-eared Bat (`r merged_table$stationary_trend[merged_table$Species == "Townsend's Big-eared Bat"]`)
+-   Townsend's Big-eared Bat (`r merged_table$stationary_trend[merged_table$Species == "Townsend's Big-eared Bat"]`)
 
-- Big Brown Bat (`r merged_table$stationary_trend[merged_table$Species == "Big Brown Bat"]`)
+-   Big Brown Bat (`r merged_table$stationary_trend[merged_table$Species == "Big Brown Bat"]`)
 
-- Long-legged Myotis (`r merged_table$stationary_trend[merged_table$Species == "Long-legged Myotis"]`).
+-   Long-legged Myotis (`r merged_table$stationary_trend[merged_table$Species == "Long-legged Myotis"]`).
 
-- Yuma Myotis (`r merged_table$stationary_trend[merged_table$Species == "Yuma Myotis"]`).
+-   Yuma Myotis (`r merged_table$stationary_trend[merged_table$Species == "Yuma Myotis"]`).
 
-No significant negative trends were detected in the stationary models. The remaining species with sufficient data had non-significant trend estimates.
+The remaining 7 species had non-significant trend estimates for stationary acoustics. Transect models yielded results for fewer species, with no significant trend results for any of the species.
 
-Transect models yielded results for fewer species, with only Little Brown Myotis showing a significant positive trend (`r merged_table$transect_trend[merged_table$Species == "Little Brown Myotis"]`). Trend estimates for the remaining species with transect data were small and non-significant.
+Need to check the significance for MYLU.
 
 ```{r}
 #| echo: false
@@ -1164,9 +1167,9 @@ kable(merged_table %>% select(Species, stationary_trend, stationary_p, transect_
 
 Regional trend analyses revealed significant results (p \< 0.05) across all regions with the most found in the South Coastal region (@tbl-regionmodelcov). Most significant results were positive, but significant negative trends were found in:
 
-- Hoary Bat in the South coastal Region (`r final_table[final_table$Species == "Hoary Bat", "South Coastal Region_trend_ci"]`)
+-   Hoary Bat in the South coastal Region (`r final_table[final_table$Species == "Hoary Bat", "South Coastal Region_trend_ci"]`)
 
-- Yuma Myotis in the Northern Region (`r final_table[final_table$Species == "Yuma Myotis", "Northern Region_trend_ci"]` ).
+-   Yuma Myotis in the Northern Region (`r final_table[final_table$Species == "Yuma Myotis", "Northern Region_trend_ci"]` ).
 
 ```{r}
 #| echo: false
@@ -1256,14 +1259,13 @@ if (knitr::is_html_output()) {
 
 ## Dynamic Occupancy Models
 
-Models converged for all 15 bat species in British Columbia.
+Occupancy increased across British Columbia between 2017 and 2025 for 10 of the 15 species modelled (@spp_occ). The strongest trend was for eastern red bat (LABO; *Lasiurus borealis*), whose occupancy rose by roughly 0.05 per year (95% CI ≈ 0.03--0.06), followed by long-legged myotis (MYVO; *Myotis volans*; ≈ 0.03 per year) and long-eared myotis (MYEV; *M. evotis*; ≈ 0.02 per year). Although big brown bat showed a positive slope, the first-to-last-year comparison did not reach the 0.95 threshold so the trend was deemed uncertain. \<\--MAKE SURE TO UPDATE THE NUMBERS TO ACTUALLY MATCH THE OUTPUTS FROM THE MODEL.
 
-\
-ANPA and LABO needs to be explored more carefully since there was a big increase in the detection probability of 2025. Need to explore the data more carefully to see the reason for it.
+![Estimated occupancy trends for 15 bat species in British Columbia (2017--2025) from a dynamic occupancy model fit to all sites. Points show the posterior mean of the linear slope of occupancy on year (change in occupancy probability per year), and horizontal bars show 95% credible intervals. The dashed line marks no change. Green indicates a posterior probability ≥ 0.95 that occupancy in 2025 exceeded that in 2017; grey indicates an uncertain trend.](Figures/DOccupancy/figB_bc_trends_all_species.png){#fig-sppocc .lightbox}
 
-![](Figures/DOccupancy/figB_bc_trends_all_species.png)
+Regionally we see that in the Northern region trends all seem to be stable with bat occupancy nethier increasing or decreasing (@fig-regocc) . For the three other regions there seems to be a steady increase in occupancy for many bats. The only species showing a decrease in occupancy is Fringed Myotis (MYTH) in the Okanagan region.
 
-![](Figures/DOccupancy/figC_regional_trends_all_species.png)
+![Regional estimated occupancy trends for 15 bat species in British Columbia (2017--2025) from a dynamic occupancy model. Points show the posterior mean of the linear slope of occupancy on year (change in occupancy probability per year), and horizontal bars show 95% credible intervals. The dashed line marks no change. Green indicates a posterior probability ≥ 0.95 that occupancy in 2025 exceeded that in 2017; red indicates a posterior probability ≥ 0.95 that occupancy in 2025 was less than that in 2017; grey indicates an uncertain trend.](Figures/DOccupancy/figC_regional_trends_all_species.png){#fig-regocc}
 
 ```{r}
 #| label: fig-occ-slider
@@ -1296,11 +1298,13 @@ if (knitr::pandoc_to("html")) {
 }
 ```
 
+Dynamic occupancy also allows us to see the difference in detection probability across the years for each species. in 2024-2025 there is an uptick across most species ([Appendix A]). In 2024 we changed our manual vetting to only manually verify 50% of all recordings, whih shouldn't have messed it up because of how we set it up (refer above).
+
 # Discussion
 
 ## Species Presence
 
-Species ranges across the project period (2016–2025) continue to appear broadly stable, with no grid cells showing conspicuous or sustained absences for previously detected species.
+Species ranges across the project period (2016--2025) continue to appear broadly stable, with no grid cells showing conspicuous or sustained absences for previously detected species.
 
 ## Trend analyses
 
@@ -1318,7 +1322,7 @@ More broadly, as threats to bat populations continue to grow, it may be worth ex
 
 ### Dynamic Occupancy
 
-The dynamic occupancy estimates suggest that the bat community in BC appears to be generally stable to increasing over 2017-2025, with no species showing evidence of decline. Species showing strongest increases are Myotis species and LABO. Two species can’t be reliably assessed (PAHE, TABR) due to very low detection rates. Distance to road has an effect on colonization and persistence dynamics for several species, with sites closer to roads tending to have higher turnover.
+The dynamic occupancy estimates suggest that the bat community in BC appears to be generally stable to increasing over 2017-2025, with no species showing evidence of decline. Species showing strongest increases are Myotis species and LABO. Two species can't be reliably assessed (PAHE, TABR) due to very low detection rates. Distance to road has an effect on colonization and persistence dynamics for several species, with sites closer to roads tending to have higher turnover.
 
 ## Challenges and Lessons Learned
 
@@ -1330,11 +1334,11 @@ Field crews across British Columbia continue to reliably collect recordings for 
 
 The BC NABat program has yielded a large and robust acoustic dataset that provides solid baseline information on distribution and relative abundance of 12 of 15 resident BC bat species. The data that has been collected so far are an invaluable reference point for BC's bat distributions and activity that improve with each additional year of monitoring. Key considerations for the future of the program include:
 
-- **Manual Verification Efficiency.** This was the first year that the BC monitoring program reduced the proportion of manual vetting carried out in the recordings to \~50% based on the findings from Stratton et al. (2022). Careful consideration of these results compared to previous years will be considered as a guide for future models and analyses.
+-   **Manual Verification Efficiency.** This was the first year that the BC monitoring program reduced the proportion of manual vetting carried out in the recordings to \~50% based on the findings from Stratton et al. (2022). Careful consideration of these results compared to previous years will be considered as a guide for future models and analyses.
 
-- **Transect Sampling.** Transects are a relatively high labour/effort source of data than stationary detectors that require participants to work late into the night. They also often do not collect many recordings of bats in BC relative to the stationary detectors. However, transects are still the only source of reliable estimates of relative abundance. While continuing to support current transect sampling efforts, the NNW Bat Hub will work along side other partners to also explore other methods of creating reliable abundance estimates that are less labour intensive.
+-   **Transect Sampling.** Transects are a relatively high labour/effort source of data than stationary detectors that require participants to work late into the night. They also often do not collect many recordings of bats in BC relative to the stationary detectors. However, transects are still the only source of reliable estimates of relative abundance. While continuing to support current transect sampling efforts, the NNW Bat Hub will work along side other partners to also explore other methods of creating reliable abundance estimates that are less labour intensive.
 
-- **Adding new grid cells.** Efforts will continue to be made to monitor as many of the same grid cells as possible, as the power of the dataset improves with each additional year. Moreover, looking for new opportunities to add new grid cells especially in under sampled regions of the province can help fill knowledge gaps for species distributions. New cells could also be added within ranges of species that are not widespread but easily monitored using acoustics. For example, Fringed Myotis and Spotted Bats are highly suited to acoustic surveillance, but only occur within a small portion of the grid cells being monitored currently
+-   **Adding new grid cells.** Efforts will continue to be made to monitor as many of the same grid cells as possible, as the power of the dataset improves with each additional year. Moreover, looking for new opportunities to add new grid cells especially in under sampled regions of the province can help fill knowledge gaps for species distributions. New cells could also be added within ranges of species that are not widespread but easily monitored using acoustics. For example, Fringed Myotis and Spotted Bats are highly suited to acoustic surveillance, but only occur within a small portion of the grid cells being monitored currently
 
 # Appendix A
 
@@ -1547,5 +1551,116 @@ The BC NABat program has yielded a large and robust acoustic dataset that provid
 ::: {.content-visible when-format="pdf"}
 ![](Figures/DOccupancy/fig7_site_map_by_year_MYYU.png)
 :::
+
+{{< pagebreak >}}
+
+```{r}
+#| label: AppendixB
+#| echo: false
+#| warning: false
+#| message: false
+#| output: asis
+
+# ---- Appendix B: per-site popup content, PDF only ------------------------
+
+if (is_pdf) {
+  appx_dir <- "Figures/AppendixB"
+  if (!dir.exists(appx_dir)) dir.create(appx_dir, recursive = TRUE)
+
+  redraw_pies <- FALSE   # set TRUE (once) after the data change, then back to FALSE
+  max_cols    <- 5       # pies per row before wrapping
+
+  # -- helpers -------------------------------------------------------------
+  safe_name <- function(x) gsub("[^A-Za-z0-9]+", "_", x)
+
+  summarise_site <- function(sp) {
+    sp %>%
+      group_by(year, species) %>%
+      summarise(n = sum(n, na.rm = TRUE), .groups = "drop") %>%
+      filter(n > 0)
+  }
+
+  # one PNG per site: a pie per year, same colours as the map popups
+  plot_site_pies <- function(d, file) {
+    yrs <- sort(unique(d$year))
+    ny  <- length(yrs)
+
+    tot <- d %>% group_by(year) %>% summarise(t = sum(n), .groups = "drop")
+    sp_present <- unique(d$species)
+    sp_levels  <- c(intersect(names(sp_colors), sp_present),
+                    setdiff(sp_present, names(sp_colors)))
+    cols <- ifelse(sp_levels %in% names(sp_colors),
+                   sp_colors[sp_levels], "#AAAAAA")
+    names(cols) <- sp_levels
+
+    d <- d %>%
+      left_join(tot, by = "year") %>%
+      mutate(
+        year_lab = sprintf("%s\n(n = %s)", year, format(t, big.mark = ",")),
+        year_lab = factor(year_lab,
+                          levels = unique(year_lab[order(year, decreasing = TRUE)])),
+        species  = factor(species, levels = sp_levels)
+      )
+
+    p <- ggplot(d, aes(x = 1, y = n, fill = species)) +
+      geom_col(width = 1, colour = "white", linewidth = 0.3) +
+      coord_polar(theta = "y") +
+      facet_wrap(~ year_lab, ncol = min(ny, max_cols)) +
+      scale_fill_manual(values = cols, name = NULL) +
+      guides(fill = guide_legend(nrow = ceiling(length(sp_levels) / 9))) +
+      theme_void(base_size = 9) +
+      theme(
+        legend.position = "bottom",
+        legend.key.size = unit(8, "pt"),
+        strip.text      = element_text(face = "bold", size = 8,
+                                       margin = margin(b = 3)),
+        plot.margin     = margin(2, 2, 2, 2)
+      )
+
+    w <- min(ny, max_cols) * 1.35 + 0.4
+    h <- ceiling(ny / max_cols) * 1.55 + 0.6
+    ggsave(file, p, width = w, height = h, dpi = 200, bg = "white")
+    w
+  }
+
+  # species x year count table (markdown pipe table -> LaTeX longtable)
+  site_table <- function(d) {
+    d %>%
+      arrange(year) %>%
+      tidyr::pivot_wider(names_from = year, values_from = n, values_fill = 0) %>%
+      mutate(Total = rowSums(across(-species))) %>%
+      arrange(desc(Total)) %>%
+      rename(Species = species) %>%
+      mutate(across(-Species, ~ format(.x, big.mark = ",")))
+  }
+
+  # -- appendix body -------------------------------------------------------
+  cat("\\clearpage\n\n")
+  cat("# Appendix B: Species composition by site {.unnumbered}\n\n")
+  cat("Pie charts show the proportion of identified bat passes by species for",
+      "each year a site was surveyed (most recent first); totals are given",
+      "under each year. Tables give the underlying counts.\n\n")
+
+  sites_appx <- sites_plot %>% arrange(site_name)
+
+  for (i in seq_len(nrow(sites_appx))) {
+    site <- sites_appx$site_name[i]
+    d    <- summarise_site(sites_appx$sp_data[[i]])
+    if (nrow(d) == 0) next
+
+    f  <- file.path(appx_dir, paste0(safe_name(site), ".png"))
+    ny <- n_distinct(d$year)
+    w  <- if (redraw_pies || !file.exists(f)) plot_site_pies(d, f)
+          else min(ny, max_cols) * 1.35 + 0.4
+
+    cat("\\needspace{0.35\\textheight}\n\n")
+    cat(sprintf("## %s {.unnumbered .unlisted}\n\n", site))
+    cat(sprintf("\\begin{center}\\includegraphics[width=%.2fin]{%s}\\end{center}\n\n",
+                min(w, 6.5), f))
+    cat(knitr::kable(site_table(d), format = "pipe", align = "l"), sep = "\n")
+    cat("\n\n")
+  }
+}
+```
 
 # Literature Cited
