@@ -212,10 +212,6 @@ parksSamplingE <- read.csv("Data/Analyzed/ParksSamplingEffort.csv")
 samplingE$X <- NULL
 parksSamplingE$X <- NULL
 
-#format BC parks summary table
-
-
-
 # Load the model covariates summary table
 model_covariates <- read.csv("Data/Analyzed/ModelVariables.csv")
 transect_covariates <- read.csv("Data/Analyzed/ModelVariables_Transect.csv")
