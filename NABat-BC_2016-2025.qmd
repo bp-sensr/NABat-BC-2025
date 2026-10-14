@@ -866,6 +866,8 @@ make_occ_species_map <- function(species,
 }
 ```
 
+{{< pagebreak >}}
+
 # Executive Summary
 
 The North American Bat Monitoring (NABat) program is a multi-agency initiative administered by the US Geological Survey (USGS). In 2024, the North by Northwest (NNW) Bat Hub was formed by combining the former Alberta Hub and the BC and Southeast Alaska (BC-SE_AK) Hub. The NNW Bat Hub leads the NABat program within British Columbia, with key support from provincial and state representatives and WCSC.
@@ -1365,7 +1367,7 @@ Species ranges across the project period (2016--2025) continue to appear broadly
 
 ### Activity Trends
 
----we still have positive trends even though we are using auto ID. How do these compare to Dynamic occupancy?
+---we still have positive trends even though we are using auto ID. Also compare to previou syears trend results and whether they are consistent or not. How do these compare to Dynamic occupancy?
 
 Overall, results suggest that bat populations remain broadly stable across British Columbia, with no species showing widespread negative trends.
 
@@ -1399,213 +1401,213 @@ The BC NABat program has yielded a large and robust acoustic dataset that provid
 
 ## Pallid bat (*Antrozous pallidus*)
 
-![](Figures/DOccupancy/fig1_covariate_effects_ANPA.png)
-
 ![](Figures/DOccupancy/fig2_bc_dynamics_ANPA.png)
 
 ![](Figures/DOccupancy/fig4_regional_dynamics_ANPA.png)
-
-![](Figures/DOccupancy/fig5_detection_by_year_ANPA.png)
 
 ::: {.content-visible when-format="pdf"}
 ![](Figures/DOccupancy/fig7_site_map_by_year_ANPA.png)
 :::
 
-## Townsend's big-eared bat (*Corynorhinus townsendii*)
+![](Figures/DOccupancy/fig1_covariate_effects_ANPA.png)
 
-![](Figures/DOccupancy/fig1_covariate_effects_COTO.png)
+![](Figures/DOccupancy/fig5_detection_by_year_ANPA.png)
+
+## Townsend's big-eared bat (*Corynorhinus townsendii*)
 
 ![](Figures/DOccupancy/fig2_bc_dynamics_COTO.png)
 
 ![](Figures/DOccupancy/fig4_regional_dynamics_COTO.png)
 
-![](Figures/DOccupancy/fig5_detection_by_year_COTO.png)
-
 ::: {.content-visible when-format="pdf"}
 ![](Figures/DOccupancy/fig7_site_map_by_year_COTO.png)
 :::
 
-## Big brown bat (*Eptesicus fuscus*)
+![](Figures/DOccupancy/fig1_covariate_effects_COTO.png)
 
-![](Figures/DOccupancy/fig1_covariate_effects_EPFU.png)
+![](Figures/DOccupancy/fig5_detection_by_year_COTO.png)
+
+## Big brown bat (*Eptesicus fuscus*)
 
 ![](Figures/DOccupancy/fig2_bc_dynamics_EPFU.png)
 
 ![](Figures/DOccupancy/fig4_regional_dynamics_EPFU.png)
 
-![](Figures/DOccupancy/fig5_detection_by_year_EPFU.png)
-
 ::: {.content-visible when-format="pdf"}
 ![](Figures/DOccupancy/fig7_site_map_by_year_EPFU.png)
 :::
 
-## Spotted bat (*Euderma maculatum*)
+![](Figures/DOccupancy/fig1_covariate_effects_EPFU.png)
 
-![](Figures/DOccupancy/fig1_covariate_effects_EUMA.png)
+![](Figures/DOccupancy/fig5_detection_by_year_EPFU.png)
+
+## Spotted bat (*Euderma maculatum*)
 
 ![](Figures/DOccupancy/fig2_bc_dynamics_EUMA.png)
 
 ![](Figures/DOccupancy/fig4_regional_dynamics_EUMA.png)
 
-![](Figures/DOccupancy/fig5_detection_by_year_EUMA.png)
-
 ::: {.content-visible when-format="pdf"}
 ![](Figures/DOccupancy/fig7_site_map_by_year_EUMA.png)
 :::
 
-## Eastern-red bat (*Lasiurus borealis*)
+![](Figures/DOccupancy/fig1_covariate_effects_EUMA.png)
 
-![](Figures/DOccupancy/fig1_covariate_effects_LABO.png)
+![](Figures/DOccupancy/fig5_detection_by_year_EUMA.png)
+
+## Eastern-red bat (*Lasiurus borealis*)
 
 ![](Figures/DOccupancy/fig2_bc_dynamics_LABO.png)
 
 ![](Figures/DOccupancy/fig4_regional_dynamics_LABO.png)
 
-![](Figures/DOccupancy/fig5_detection_by_year_LABO.png)
-
 ::: {.content-visible when-format="pdf"}
 ![](Figures/DOccupancy/fig7_site_map_by_year_LABO.png)
 :::
 
-## Hoary bat (*Lasiurus cinereus*)
+![](Figures/DOccupancy/fig1_covariate_effects_LABO.png)
 
-![](Figures/DOccupancy/fig1_covariate_effects_LACI.png)
+![](Figures/DOccupancy/fig5_detection_by_year_LABO.png)
+
+## Hoary bat (*Lasiurus cinereus*)
 
 ![](Figures/DOccupancy/fig2_bc_dynamics_LACI.png)
 
 ![](Figures/DOccupancy/fig4_regional_dynamics_LACI.png)
 
-![](Figures/DOccupancy/fig5_detection_by_year_LACI.png)
-
 ::: {.content-visible when-format="pdf"}
 ![](Figures/DOccupancy/fig7_site_map_by_year_LACI.png)
 :::
 
-## Silver-haired bat (*Lasionycteris noctivagans*)
+![](Figures/DOccupancy/fig1_covariate_effects_LACI.png)
 
-![](Figures/DOccupancy/fig1_covariate_effects_LANO.png)
+![](Figures/DOccupancy/fig5_detection_by_year_LACI.png)
+
+## Silver-haired bat (*Lasionycteris noctivagans*)
 
 ![](Figures/DOccupancy/fig2_bc_dynamics_LANO.png)
 
 ![](Figures/DOccupancy/fig4_regional_dynamics_LANO.png)
 
-![](Figures/DOccupancy/fig5_detection_by_year_LANO.png)
-
 ::: {.content-visible when-format="pdf"}
 ![](Figures/DOccupancy/fig7_site_map_by_year_LANO.png)
 :::
 
-## California Myotis (*Myotis californicus*)
+![](Figures/DOccupancy/fig1_covariate_effects_LANO.png)
 
-![](Figures/DOccupancy/fig1_covariate_effects_MYCA.png)
+![](Figures/DOccupancy/fig5_detection_by_year_LANO.png)
+
+## California Myotis (*Myotis californicus*)
 
 ![](Figures/DOccupancy/fig2_bc_dynamics_MYCA.png)
 
 ![](Figures/DOccupancy/fig4_regional_dynamics_MYCA.png)
 
-![](Figures/DOccupancy/fig5_detection_by_year_MYCA.png)
-
 ::: {.content-visible when-format="pdf"}
 ![](Figures/DOccupancy/fig7_site_map_by_year_MYCA.png)
 :::
 
-## Western small-footed Myotis (*Myotis ciliolabrum*)
+![](Figures/DOccupancy/fig1_covariate_effects_MYCA.png)
 
-![](Figures/DOccupancy/fig1_covariate_effects_MYCI.png)
+![](Figures/DOccupancy/fig5_detection_by_year_MYCA.png)
+
+## Western small-footed Myotis (*Myotis ciliolabrum*)
 
 ![](Figures/DOccupancy/fig2_bc_dynamics_MYCI.png)
 
 ![](Figures/DOccupancy/fig4_regional_dynamics_MYCI.png)
 
-![](Figures/DOccupancy/fig5_detection_by_year_MYCI.png)
-
 ::: {.content-visible when-format="pdf"}
 ![](Figures/DOccupancy/fig7_site_map_by_year_MYCI.png)
 :::
 
-## Long-eared Myotis (*Myotis evotis*)
+![](Figures/DOccupancy/fig1_covariate_effects_MYCI.png)
 
-![](Figures/DOccupancy/fig1_covariate_effects_MYEV.png)
+![](Figures/DOccupancy/fig5_detection_by_year_MYCI.png)
+
+## Long-eared Myotis (*Myotis evotis*)
 
 ![](Figures/DOccupancy/fig2_bc_dynamics_MYEV.png)
 
 ![](Figures/DOccupancy/fig4_regional_dynamics_MYEV.png)
 
-![](Figures/DOccupancy/fig5_detection_by_year_MYEV.png)
-
 ::: {.content-visible when-format="pdf"}
 ![](Figures/DOccupancy/fig7_site_map_by_year_MYEV.png)
 :::
 
-## Little brown Myotis (*Myotis lucifugus*)
+![](Figures/DOccupancy/fig1_covariate_effects_MYEV.png)
 
-![](Figures/DOccupancy/fig1_covariate_effects_MYLU.png)
+![](Figures/DOccupancy/fig5_detection_by_year_MYEV.png)
+
+## Little brown Myotis (*Myotis lucifugus*)
 
 ![](Figures/DOccupancy/fig2_bc_dynamics_MYLU.png)
 
 ![](Figures/DOccupancy/fig4_regional_dynamics_MYLU.png)
 
-![](Figures/DOccupancy/fig5_detection_by_year_MYLU.png)
-
 ::: {.content-visible when-format="pdf"}
 ![](Figures/DOccupancy/fig7_site_map_by_year_MYLU.png)
 :::
 
-## Northern Myotis (*Myotis septentrionalis*)
+![](Figures/DOccupancy/fig1_covariate_effects_MYLU.png)
 
-![](Figures/DOccupancy/fig1_covariate_effects_MYSE.png)
+![](Figures/DOccupancy/fig5_detection_by_year_MYLU.png)
+
+## Northern Myotis (*Myotis septentrionalis*)
 
 ![](Figures/DOccupancy/fig2_bc_dynamics_MYSE.png)
 
 ![](Figures/DOccupancy/fig4_regional_dynamics_MYSE.png)
 
-![](Figures/DOccupancy/fig5_detection_by_year_MYSE.png)
-
 ::: {.content-visible when-format="pdf"}
 ![](Figures/DOccupancy/fig7_site_map_by_year_MYSE.png)
 :::
 
-## Fringed Myotis (*Myotis thysanodes*)
+![](Figures/DOccupancy/fig1_covariate_effects_MYSE.png)
 
-![](Figures/DOccupancy/fig1_covariate_effects_MYTH.png)
+![](Figures/DOccupancy/fig5_detection_by_year_MYSE.png)
+
+## Fringed Myotis (*Myotis thysanodes*)
 
 ![](Figures/DOccupancy/fig2_bc_dynamics_MYTH.png)
 
 ![](Figures/DOccupancy/fig4_regional_dynamics_MYTH.png)
 
-![](Figures/DOccupancy/fig5_detection_by_year_MYTH.png)
-
 ::: {.content-visible when-format="pdf"}
 ![](Figures/DOccupancy/fig7_site_map_by_year_MYTH.png)
 :::
 
-## Long-legged Myotis (*Myotis volans*)
+![](Figures/DOccupancy/fig1_covariate_effects_MYTH.png)
 
-![](Figures/DOccupancy/fig1_covariate_effects_MYVO.png)
+![](Figures/DOccupancy/fig5_detection_by_year_MYTH.png)
+
+## Long-legged Myotis (*Myotis volans*)
 
 ![](Figures/DOccupancy/fig2_bc_dynamics_MYVO.png)
 
 ![](Figures/DOccupancy/fig4_regional_dynamics_MYVO.png)
 
-![](Figures/DOccupancy/fig5_detection_by_year_MYVO.png)
-
 ::: {.content-visible when-format="pdf"}
 ![](Figures/DOccupancy/fig7_site_map_by_year_MYVO.png)
 :::
 
-## Yuma Myotis (*Myotis yumanensis*)
+![](Figures/DOccupancy/fig1_covariate_effects_MYVO.png)
 
-![](Figures/DOccupancy/fig1_covariate_effects_MYYU.png)
+![](Figures/DOccupancy/fig5_detection_by_year_MYVO.png)
+
+## Yuma Myotis (*Myotis yumanensis*)
 
 ![](Figures/DOccupancy/fig2_bc_dynamics_MYYU.png)
 
 ![](Figures/DOccupancy/fig4_regional_dynamics_MYYU.png)
 
-![](Figures/DOccupancy/fig5_detection_by_year_MYYU.png)
-
 ::: {.content-visible when-format="pdf"}
 ![](Figures/DOccupancy/fig7_site_map_by_year_MYYU.png)
 :::
+
+![](Figures/DOccupancy/fig1_covariate_effects_MYYU.png)
+
+![](Figures/DOccupancy/fig5_detection_by_year_MYYU.png)
 
 {{< pagebreak >}}
 
