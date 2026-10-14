@@ -986,7 +986,7 @@ kable(parksSamplingE,
 
 ### Stationary Surveys
 
-Two to four stationary detectors were deployed across at least two quadrants per grid cell for a minimum of seven nights. Sites are selected to maximize species detection and recording quality across different habitat types (see [@rae2024North] for full site selection criteria). Deployment occurs between mid-May and mid-July, after bats have emerged from hibernation but before young bats are volant. Sites and timing are kept consistent between years to minimize variability in conditions affecting bat activity.
+Two to four stationary detectors were deployed across at least two quadrants per grid cell for a minimum of seven nights. Sites are selected to maximize species detection and recording quality across different habitat types (see @rae2024North for full site selection criteria). Deployment occurs between mid-May and mid-July, after bats have emerged from hibernation but before young bats are volant. Sites and timing are kept consistent between years to minimize variability in conditions affecting bat activity.
 
 ### Transect Surveys
 
@@ -1120,9 +1120,9 @@ Models were fit in a Bayesian framework using JAGS (Version 4.3.2) via the jagsU
 
 All species previously documented in BC were detected in 2025. Total acoustic activity varied substantially among grid cells and regions (@fig-map).
 
-ANPA in a lot more sites in the Kootney region than in previous years (most was 6 different grids in 2022, in 2025 in 11 grids) all still within the area expected. 2025 saw a big increase in the number of labo detected in the Kootnay region. MYSE also increasing further west in the north. MYTH all the way to the north (need to confirm)
+2025 saw a big increase in the number of labo detected in the Kootnay region. MYSE also increasing further west in the north. MYTH all the way to the north (need to confirm)
 
-@fig-map is an interactive map. Readers can zoom in to see the individual stationary monitoring sites (blue circles), and click a site to open a pop-up with a summary pie chart of total detections by species and year.
+@fig-map is an interactive map. Readers can zoom in to see the individual stationary monitoring sites (blue circles), and click a site to open a pop-up with a summary pie chart of total detections by species and year. Readers can also search for specific grid cells using the ![](images/clipboard-4082158342.png){width="26" height="27"} icon.
 
 ```{r}
 #| echo: false
@@ -1314,7 +1314,7 @@ if (is_html) {
 
 ## Dynamic Occupancy Models
 
-Occupancy increased across British Columbia between 2017 and 2025 for 10 of the 15 species modelled (@fig-sppocc). The strongest trend was for eastern red bat (LABO; *Lasiurus borealis*), whose occupancy rose by roughly 0.05 per year (95% CI ≈ 0.03--0.06), followed by long-legged myotis (MYVO; *Myotis volans*; ≈ 0.03 per year) and long-eared myotis (MYEV; *M. evotis*; ≈ 0.02 per year). Although big brown bat showed a positive slope, the first-to-last-year comparison did not reach the 0.95 threshold so the trend was deemed uncertain. \<--MAKE SURE TO UPDATE THE NUMBERS TO ACTUALLY MATCH THE OUTPUTS FROM THE MODEL.
+Occupancy increased across British Columbia between 2017 and 2025 for 10 of the 15 species modelled (@fig-sppocc).
 
 ![Estimated occupancy trends for 15 bat species in British Columbia (2017--2025) from a dynamic occupancy model fit to all sites. Points show the posterior mean of the linear slope of occupancy on year (change in occupancy probability per year), and horizontal bars show 95% credible intervals. The dashed line marks no change. Green indicates a posterior probability ≥ 0.95 that occupancy in 2025 exceeded that in 2017; grey indicates an uncertain trend.](Figures/DOccupancy/figB_bc_trends_all_species.png){#fig-sppocc}
 
