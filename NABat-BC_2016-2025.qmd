@@ -14,7 +14,6 @@ format:
     toc-location: left
     css: styles.css
     include-after-body: collapsible.html
-    lightbox: true
   pdf:
     tbl-pos: "H"
     toc: true
@@ -34,6 +33,7 @@ format:
       text: |
         \usepackage{placeins}
         \usepackage{float}
+        \usepackage{needspace}
 date: last-modified
 author: 
   - name: "Camila Hurtado"
@@ -58,122 +58,124 @@ nocite: '@*'
 #| cache: true
 #| include: false
 
-#-------this chunk is just for reference to see how the summary tables were created
-
+# #-------this chunk is just for reference to see how the summary tables were created
+# 
 # #----Sampling effort summary----
-# #Set to FALSE to count stationary detector sites only (drops mobile transects)
-# include_transects <- TRUE
+#  #Set to FALSE to count stationary detector sites only (drops mobile transects)
+#  include_transects <- TRUE
+#  
+#  raw <- read_excel("Data/Raw/AllYearActivitybyNight_2016-2025_BC_withCovariates.xlsx", sheet = "OccupancyKSP")
+#  
+#  bc_parks_cells <- c(986, 6202, 16426, 17706, 26170, 37274, 38442, 115322,
+#                      132650, 145578, 172090, 175354, 206394, 212906, 230186,
+#                      243562, 265749, 283586, 317428)
+#  
+#  effort_nights <- raw %>%
+#    select(`GRTS Cell ID`, Quadrant, Night) %>%
+#    mutate(Night = as.Date(Night),
+#           Year  = year(Night)) %>%
+#    distinct(`GRTS Cell ID`, Quadrant, Night, .keep_all = TRUE) %>%
+#     #Drop nights with bad detector clock dates (1963, 2000, 2001, 2015)
+#    filter(between(Year, 2016, 2025)) %>%
+#    { if (include_transects) . else filter(., Quadrant != "Transects") } %>%
+#    mutate(BC_Park = as.character(`GRTS Cell ID`) %in% as.character(bc_parks_cells))
+#  
+#  samplingE <- effort_nights %>%
+#    group_by(Year) %>%
+#    summarise(
+#      `Number of Grids`          = n_distinct(`GRTS Cell ID`),
+#      `Number of BC Parks Grids` = n_distinct(`GRTS Cell ID`[BC_Park]),
+#      `Number of Site Nights`    = n(),   # one row = one site (cell + quadrant) x night
+#      .groups = "drop"
+#    ) %>%
+#    arrange(Year)
+#  
+#  write.csv(samplingE, "Data/Analyzed/SummarySamplingEffort.csv")
 # 
-# raw <- read_excel("Data/Raw/AllYearActivitybyNight_2016_2025_BC_withALLmetadata.xlsx", sheet = "Occupancy_NEAR")
+#  ##-----BC Parks summary-------
+#  bc_parks <- tribble(
+#    ~`GRTS Cell ID`, ~Park,
+#    986,    "Bowron",
+#    6202,   "Goldstream",
+#    16426,  "Carp",
+#    17706,  "Wells Gray",
+#    26170,  "Yakoun",
+#    37274,  "Mount Robson",
+#    38442,  "Churn Creek",
+#    115322, "Tweedsmuir",
+#    132650, "Junction Sheep",
+#    145578, "Premier Lake",
+#    172090, "Mount Seymour",
+#    175354, "Liard Hot Springs",
+#    206394, "Naikoon",
+#    212906, "Horne Lake",
+#    230186, "Skagit",
+#    243562, "Kimberley",
+#    265749, "Kettle/Conkle",
+#    283586, "Lakelse Lake",
+#    317428, "Manning"
+#  )
+#  
+#  park_year_grid <- effort_nights %>%
+#    mutate(`GRTS Cell ID` = as.numeric(`GRTS Cell ID`)) %>%
+#    filter(`GRTS Cell ID` %in% bc_parks$`GRTS Cell ID`) %>%
+#    distinct(`GRTS Cell ID`, Year) %>%
+#    mutate(Sampled = "✓") %>%
+#     #add every park cell x year combination, including cells never sampled
+#    complete(`GRTS Cell ID` = bc_parks$`GRTS Cell ID`, Year = 2016:2025,
+#             fill = list(Sampled = "")) %>%
+#    group_by(`GRTS Cell ID`) %>%
+#    mutate(`Number of Years` = sum(Sampled == "✓")) %>%
+#    ungroup() %>%
+#    pivot_wider(names_from = Year, values_from = Sampled) %>%
+#    left_join(bc_parks, by = "GRTS Cell ID") %>%
+#    relocate(`GRTS Cell ID`, Park) %>%
+#    relocate(`Number of Years`, .after = last_col()) %>%
+#    arrange(`GRTS Cell ID`) %>%
+#    rename(`GRTS Cell ID` = `GRTS Cell ID`) %>%
+#    arrange(desc(`Number of Years`))
+#  write.csv(park_year_grid, "Data/Analyzed/ParksSamplingEffort.csv")
 # 
-# bc_parks_cells <- c(986, 6202, 16426, 17706, 26170, 37274, 38442, 115322,
-#                     132650, 145578, 172090, 175354, 206394, 212906, 230186,
-#                     243562, 265749, 283586, 317428)
-# 
-# effort_nights <- raw %>%
-#   select(GRTS_Cell_ID, Quadrant, Night) %>%
-#   mutate(Night = as.Date(Night),
-#          Year  = year(Night)) %>%
-#   distinct(GRTS_Cell_ID, Quadrant, Night, .keep_all = TRUE) %>%
-#   # Drop nights with bad detector clock dates (1963, 2000, 2001, 2015)
-#   filter(between(Year, 2016, 2025)) %>%
-#   { if (include_transects) . else filter(., Quadrant != "Transects") } %>%
-#   mutate(BC_Park = as.character(GRTS_Cell_ID) %in% as.character(bc_parks_cells))
-# 
-# samplingE <- effort_nights %>%
-#   group_by(Year) %>%
-#   summarise(
-#     `Number of Grids`          = n_distinct(GRTS_Cell_ID),
-#     `Number of BC Parks Grids` = n_distinct(GRTS_Cell_ID[BC_Park]),
-#     `Number of Site Nights`    = n(),   # one row = one site (cell + quadrant) x night
-#     .groups = "drop"
-#   ) %>%
-#   arrange(Year)
-# 
-# write.csv(samplingE, "Data/Analyzed/SummarySamplingEffort.csv")
-
-# ##-----BC Parks summary-------
-# bc_parks <- tribble(
-#   ~GRTS_Cell_ID, ~Park,
-#   986,    "Bowron",
-#   6202,   "Goldstream",
-#   16426,  "Carp",
-#   17706,  "Wells Gray",
-#   26170,  "Yakoun",
-#   37274,  "Mount Robson",
-#   38442,  "Churn Creek",
-#   115322, "Tweedsmuir",
-#   132650, "Junction Sheep",
-#   145578, "Premier Lake",
-#   172090, "Mount Seymour",
-#   175354, "Liard Hot Springs",
-#   206394, "Naikoon",
-#   212906, "Horne Lake",
-#   230186, "Skagit",
-#   243562, "Kimberley",
-#   265749, "Kettle/Conkle",
-#   283586, "Lakelse Lake",
-#   317428, "Manning"
-# )
-# 
-# park_year_grid <- effort_nights %>%
-#   mutate(GRTS_Cell_ID = as.numeric(GRTS_Cell_ID)) %>%
-#   filter(GRTS_Cell_ID %in% bc_parks$GRTS_Cell_ID) %>%
-#   distinct(GRTS_Cell_ID, Year) %>%
-#   mutate(Sampled = "✓") %>%
-#   # add every park cell x year combination, including cells never sampled
-#   complete(GRTS_Cell_ID = bc_parks$GRTS_Cell_ID, Year = 2016:2025,
-#            fill = list(Sampled = "")) %>%
-#   group_by(GRTS_Cell_ID) %>%
-#   mutate(`Number of Years` = sum(Sampled == "✓")) %>%
-#   ungroup() %>%
-#   pivot_wider(names_from = Year, values_from = Sampled) %>%
-#   left_join(bc_parks, by = "GRTS_Cell_ID") %>%
-#   relocate(GRTS_Cell_ID, Park) %>%
-#   relocate(`Number of Years`, .after = last_col()) %>%
-#   arrange(GRTS_Cell_ID) %>%
-#   rename(`GRTS Cell ID` = GRTS_Cell_ID) %>%
-#   arrange(desc(`Number of Years`))
-# write.csv(park_year_grid, "Data/Analyzed/ParksSamplingEffort.csv")
-
-# 
-# ##---Summary for map----
-# #only using full species ID not couplets
-# sp_cols <- c("ANPA", "COTO", "EPFU", "EUMA", "LABO", "LACI", "LANO", "MYCA", "MYCI", "MYEV", "MYLU", "MYTH", "MYVO", "MYSE", "MYYU", "PAHE", "TABR")
-# site_list <-raw %>%
-#   # Clean nightly data: one row per site x night
-#   mutate(year = lubridate::year(Night)) %>%
-#   distinct(GRTS_Cell_ID, Quadrant, Night, .keep_all = TRUE) %>%   # drop duplicates
-#   filter(between(year, 2016, 2025),                     # drop bad detector dates
-#          Quadrant != "Transects",                       # transects drawn as lines
-#          !is.na(Latitude), !is.na(Longitude)) %>%
-#   transmute(grts_id  = as.character(GRTS_Cell_ID),
-#             quadrant = as.character(Quadrant),
-#             site_name = paste(grts_id, quadrant),
-#             Lat = Latitude, Long = Longitude, year,
-#             across(all_of(sp_cols))) %>%
-#   pivot_longer(all_of(sp_cols), names_to = "species", values_to = "recordings") %>%
-#   # recordings per species per site per year
-#   group_by(site_name, grts_id, quadrant, Lat, Long, year, species) %>%
-#   summarise(n = sum(recordings, na.rm = TRUE), .groups = "drop") %>%
-#   # one row per site
-#   group_by(site_name, grts_id, quadrant, Lat, Long) %>%
-#   summarise(
-#     Years_Sampled = paste(sort(unique(year)), collapse = ", "),
-#     N_Years       = n_distinct(year),
-#     years         = list(sort(unique(year))),
-#     total         = sum(n),
-#     sp_data       = list(tibble(species, n, year) %>% filter(n > 0)),
-#     .groups = "drop"
-#   )
-# 
-# saveRDS(site_list, "Data/Analyzed/MapDataSummary.rds")
-# 
+#  
+# # ##---Summary for map----
+# # #only using full species ID not couplets
+#  sp_cols <- c("ANPA", "COTO", "EPFU", "EUMA", "LABO", "LACI", "LANO", "MYCA", "MYCI", "MYEV", "MYLU", "MYTH", "MYVO", "MYSE", "MYYU", "PAHE", "TABR")
+#  
+#  raw <- read_excel("Data/Raw/AllYearActivitybyNight_2016-2025_BC_withCovariates.xlsx", sheet = "Occupancy") #only confirmed results (man verification and/or 2 autoID agreement)
+#  site_list <-raw %>%
+#     #Clean nightly data: one row per site x night
+#    mutate(year = lubridate::year(Night)) %>%
+#    distinct(`GRTS Cell ID`, Quadrant, Night, .keep_all = TRUE) %>%    #drop duplicates
+#    filter(between(year, 2016, 2025),                      #drop bad detector dates
+#           Quadrant != "Transects",                        #transects drawn as lines
+#           !is.na(Latitude), !is.na(Longitude)) %>%
+#    transmute(grts_id  = as.character(`GRTS Cell ID`),
+#              quadrant = as.character(Quadrant),
+#              site_name = paste(grts_id, quadrant),
+#              Lat = Latitude, Long = Longitude, year,
+#              across(all_of(sp_cols))) %>%
+#    pivot_longer(all_of(sp_cols), names_to = "species", values_to = "recordings") %>%
+#     #recordings per species per site per year
+#    group_by(site_name, grts_id, quadrant, Lat, Long, year, species) %>%
+#    summarise(n = sum(recordings, na.rm = TRUE), .groups = "drop") %>%
+#     #one row per site
+#    group_by(site_name, grts_id, quadrant, Lat, Long) %>%
+#    summarise(
+#      Years_Sampled = paste(sort(unique(year)), collapse = ", "),
+#      N_Years       = n_distinct(year),
+#      years         = list(sort(unique(year))),
+#      total         = sum(n),
+#      sp_data       = list(tibble(species, n, year) %>% filter(n > 0)),
+#      .groups = "drop"
+#    )
+#  
+#  saveRDS(site_list, "Data/Analyzed/MapDataSummary.rds")
+#  
 # #for a readable version save as csv.
-# site_list %>%
-#   select(-years) %>%
-#   tidyr::unnest(sp_data) %>%
-#   write.csv("Data/Analyzed/MapDataSummary.csv", row.names = FALSE)
+#  site_list %>%
+#    select(-years) %>%
+#    tidyr::unnest(sp_data) %>%
+#    write.csv("Data/Analyzed/MapDataSummary.csv", row.names = FALSE)
 ```
 
 ```{r}
@@ -203,6 +205,7 @@ library(kableExtra)
 library(gt)
 library(RColorBrewer)
 
+
 # Ensure proper initialization order
 options(htmlwidgets.TOJSON_ARGS = list(na = 'string'))
 
@@ -212,6 +215,9 @@ parksSamplingE <- read.csv("Data/Analyzed/ParksSamplingEffort.csv")
 #remove extra column with numebrs
 samplingE$X <- NULL
 parksSamplingE$X <- NULL
+
+#get the number of grids sampled in 2025
+SampledGrids2025 <- samplingE$`Number of Grids`[samplingE$Year==2025]
 
 # Load the model covariates summary table
 model_covariates <- read.csv("Data/Analyzed/ModelVariables.csv")
@@ -267,7 +273,20 @@ transect_covariates<- transect_covariates %>%
 #| eval: true
 #| warning: false
 #| message: false
-#|
+
+#specify when document is html vs pdf so that thing render as needed
+is_html <- knitr::pandoc_to("html")
+is_pdf <- !is_html
+
+#Need to specify figure captions based on the rendering type (PDF or HTML)
+cap_sitesummary <- paste0(
+  "Acoustic bat monitoring sites in British Columbia, 2016–2025. Regions were defined by Wildlife Conservation Society Canada (WCSC) from species range maps to group areas with similar species composition.",
+  if (is_html) paste0(
+    "Click any site to view a summary of species detections by year. Summaries include manually verified detections and automated identifications where two auto-ID programs agreed on the species."
+  ) else ""
+)
+
+
 # ── 1. Species cols ────────────────────────────────────────────────────────────
 sp_cols <- c("ANPA","COTO","EPFU","EUMA","LABO","LACI","LANO",
              "MYCA","MYCI","MYEV","MYLU","MYSE","MYTH","MYVO","MYYU",
@@ -386,6 +405,15 @@ sites_plot <- site_list %>%
   )) %>%
   filter(!is.na(popup))
 
+# ── 5b. One searchable point per GRTS cell (centre of its sites) ───────────────
+grts_search_pts <- sites_plot %>%
+  sf::st_drop_geometry() %>%              # harmless if sites_plot isn't sf
+  group_by(grts_id) %>%
+  summarise(Long = mean(Long),
+            Lat  = mean(Lat),
+            .groups = "drop") %>%
+  mutate(grts_label = as.character(grts_id))
+
 # ── 6. Load spatial data ───────────────────────────────────────────────────────
 transects_sf <- st_read("Data/Mapping/transects_merged.shp", quiet = TRUE) |>
   st_zm() |>                                   # drop any Z/M values Leaflet can't use
@@ -417,6 +445,7 @@ pal_regions <- colorFactor(
   palette = unname(region_colors),
   levels  = names(region_colors)
 )
+
 
 # ── 7. Regions legend (custom HTML) ────────────────────────────────────────────
 region_legend_html <- htmltools::tags$div(
@@ -478,7 +507,31 @@ m_full <- leaflet() %>%
     popup       = ~popup,
     label       = ~site_name
   ) %>%
-  
+  # Invisible, non-clickable markers used only by the search bar
+  addCircleMarkers(
+    data        = grts_search_pts,
+    lng         = ~Long,
+    lat         = ~Lat,
+    radius      = 1,
+    opacity     = 0,
+    fillOpacity = 0,
+    label       = ~grts_label,
+    group       = "grts_search",
+    options     = pathOptions(interactive = FALSE)  # won't block clicks on real sites
+  ) %>%
+  addSearchFeatures(
+    targetGroups = "grts_search",
+    options = searchFeaturesOptions(
+      propertyName         = "label",
+      textPlaceholder      = "Search GRTS ID…",
+      zoom                 = 11,     # a 10 × 10 km GRTS cell fits well at 11–12
+      initial              = FALSE,  # partial IDs still match
+      openPopup            = FALSE,
+      firstTipSubmit       = TRUE,
+      autoCollapse         = TRUE,
+      hideMarkerOnCollapse = TRUE
+    )
+  ) %>%
   addControl(region_legend_html, position = "bottomright") %>%
   addLayersControl(
     overlayGroups = c("Analysis Regions", "Transects"),
@@ -520,12 +573,14 @@ stationary <- bc.cov.slope.summary.singlet %>%
 # Prepare transect data
 transect <- bc.cov.slope.transect %>%
   mutate(
-    p_numeric = as.numeric(gsub("p = ", "", p.value)),
-    trend_ci = sprintf("%.2f ± %.2f", Estimate, 1.96 * SE),
+    p_raw     = trimws(p.value),
+    p_numeric = as.numeric(sub(".*?([0-9]*\\.[0-9]+).*", "\\1", p_raw)),
+    trend_ci  = sprintf("%.2f ± %.2f", Estimate, 1.96 * SE),
     p_val = case_when(
-      is.na(p_numeric) ~ NA_character_,
-      p_numeric < 0.001 ~ "<0.001",
-      TRUE ~ sprintf("%.3f", p_numeric)
+      grepl("<", p_raw)  ~ "<0.001",
+      is.na(p_numeric)   ~ NA_character_,
+      p_numeric < 0.001  ~ "<0.001",
+      TRUE               ~ sprintf("%.3f", p_numeric)
     )
   ) %>%
   select(SpeciesGroup, trend_ci, p_val, p_numeric) %>%
@@ -1059,13 +1114,15 @@ Models were fit in a Bayesian framework using JAGS (Version 4.3.2) via the jagsU
 
 # Results
 
-2025 marked the tenth year of coordinated NABat sampling done in BC. A total of `` r samplingE$`Number of Grids`[samplingE$Year==2025] `` grid cells were sampled with the support of over 60 individuals including contractors, volunteers and staff members from BC Parks, BC WLRS, and BC Ministry of Forests. Grid leaders have also collected a total of 16 transect insect sticky trap samples in 2025, which will be added to previous years of data to explore the addition of them as an added covariate to transects.
+2025 marked the tenth year of coordinated NABat sampling done in BC. A total of `r SampledGrids2025` grid cells were sampled with the support of over 60 individuals including contractors, volunteers and staff members from BC Parks, BC WLRS, and BC Ministry of Forests. Grid leaders have also collected a total of 16 transect insect sticky trap samples in 2025, which will be added to previous years of data to explore the addition of insect abundance as a covariate in the transect models.
 
 ## Species Detection
 
-All species previously documented in BC were detected in 2025. Total acoustic activity varied substantially among grid cells and regions (@fig-map). @fig-map is an interactive map. Readers can zoom in to see the individual stationary monitoring sites (blue circles), and click a site to open a pop-up with a summary pie chart of total detections by species and year.
+All species previously documented in BC were detected in 2025. Total acoustic activity varied substantially among grid cells and regions (@fig-map).
 
-ANPA in a lot more sites in the southeast corner than in previous years (most was 6 different grids in 2022, in 2025 in 11 grids). all still within the area expected. LABO continues to expand with detections all the way to the most northern grid cell (need to confirm this). MYCI detections on the island confirm this. MYSE also increasing further west in the north. MYTH all the way to the north (need to confirm)
+ANPA in a lot more sites in the Kootney region than in previous years (most was 6 different grids in 2022, in 2025 in 11 grids) all still within the area expected. 2025 saw a big increase in the number of labo detected in the Kootnay region. MYSE also increasing further west in the north. MYTH all the way to the north (need to confirm)
+
+@fig-map is an interactive map. Readers can zoom in to see the individual stationary monitoring sites (blue circles), and click a site to open a pop-up with a summary pie chart of total detections by species and year.
 
 ```{r}
 #| echo: false
@@ -1076,11 +1133,11 @@ ANPA in a lot more sites in the southeast corner than in previous years (most wa
 #| include: true
 #| fig-align: center
 #| out-width: "100%"
-#| fig-cap: "NABat survey efforts in 2025 within British Columbia. Analysis regions were defined by Wildlife Conservation Society Canada (WCSC) based on species ranges maps to group areas with similar species compositions."
+#| fig-cap: !expr cap_sitesummary
 #| label: fig-map
 
 # ── Render ─────────────────────────────────────────────────────────────────────
-if (knitr::is_html_output()) {
+if (is_html) {
   m_full
 } else {
   dir.create(file.path(getwd(), "Figures"), showWarnings = FALSE)
@@ -1131,17 +1188,15 @@ if (knitr::is_html_output()) {
 
 We estimated yearly trends in nightly acoustic activity for `r sum(merged_table$stationary_trend != "", na.rm = TRUE)` of BC's 15 resident species. Transect data was sufficient to estimate trends for `r sum(merged_table$transect_trend != "", na.rm = TRUE)` species in BC (@tbl-modelcov). Of the stationary models, four species showed statistically significant positive trends (p \< 0.05)
 
--   Townsend's Big-eared Bat (`r merged_table$stationary_trend[merged_table$Species == "Townsend's Big-eared Bat"]`)
+- Townsend's Big-eared Bat (`r merged_table$stationary_trend[merged_table$Species == "Townsend's Big-eared Bat"]`)
 
--   Big Brown Bat (`r merged_table$stationary_trend[merged_table$Species == "Big Brown Bat"]`)
+- Big Brown Bat (`r merged_table$stationary_trend[merged_table$Species == "Big Brown Bat"]`)
 
--   Long-legged Myotis (`r merged_table$stationary_trend[merged_table$Species == "Long-legged Myotis"]`).
+- Long-legged Myotis (`r merged_table$stationary_trend[merged_table$Species == "Long-legged Myotis"]`).
 
--   Yuma Myotis (`r merged_table$stationary_trend[merged_table$Species == "Yuma Myotis"]`).
+- Yuma Myotis (`r merged_table$stationary_trend[merged_table$Species == "Yuma Myotis"]`).
 
-The remaining 7 species had non-significant trend estimates for stationary acoustics. Transect models yielded results for fewer species, with no significant trend results for any of the species.
-
-Need to check the significance for MYLU.
+The remaining 7 species had non-significant trend estimates for stationary acoustics. Transect models yielded results for fewer species, with significant positive result only for the little brown Myotis (`r merged_table$transect_trend [merged_table$Species == "Little Brown Myotis"]`).
 
 ```{r}
 #| echo: false
@@ -1167,9 +1222,9 @@ kable(merged_table %>% select(Species, stationary_trend, stationary_p, transect_
 
 Regional trend analyses revealed significant results (p \< 0.05) across all regions with the most found in the South Coastal region (@tbl-regionmodelcov). Most significant results were positive, but significant negative trends were found in:
 
--   Hoary Bat in the South coastal Region (`r final_table[final_table$Species == "Hoary Bat", "South Coastal Region_trend_ci"]`)
+- Hoary Bat in the South coastal Region (`r final_table[final_table$Species == "Hoary Bat", "South Coastal Region_trend_ci"]`)
 
--   Yuma Myotis in the Northern Region (`r final_table[final_table$Species == "Yuma Myotis", "Northern Region_trend_ci"]` ).
+- Yuma Myotis in the Northern Region (`r final_table[final_table$Species == "Yuma Myotis", "Northern Region_trend_ci"]` ).
 
 ```{r}
 #| echo: false
@@ -1179,7 +1234,7 @@ Regional trend analyses revealed significant results (p \< 0.05) across all regi
 #| tbl-cap:  Regional trend estimates from 2017-2024 NABat monitoring in BC adjusted for covariates. Trends estimated on a logarithmic scale, thus a trend estimate of 0.05 corresponds to an annual change of 5%. Significant results (p value < 0.05) are highlighted in bold.
 #| tbl-pos: 'H'
 
-if (knitr::is_html_output()) {
+if (is_html) {
   kbl(final_table,
       col.names = col_names,
       booktabs = TRUE,
@@ -1259,9 +1314,9 @@ if (knitr::is_html_output()) {
 
 ## Dynamic Occupancy Models
 
-Occupancy increased across British Columbia between 2017 and 2025 for 10 of the 15 species modelled (@spp_occ). The strongest trend was for eastern red bat (LABO; *Lasiurus borealis*), whose occupancy rose by roughly 0.05 per year (95% CI ≈ 0.03--0.06), followed by long-legged myotis (MYVO; *Myotis volans*; ≈ 0.03 per year) and long-eared myotis (MYEV; *M. evotis*; ≈ 0.02 per year). Although big brown bat showed a positive slope, the first-to-last-year comparison did not reach the 0.95 threshold so the trend was deemed uncertain. \<\--MAKE SURE TO UPDATE THE NUMBERS TO ACTUALLY MATCH THE OUTPUTS FROM THE MODEL.
+Occupancy increased across British Columbia between 2017 and 2025 for 10 of the 15 species modelled (@fig-sppocc). The strongest trend was for eastern red bat (LABO; *Lasiurus borealis*), whose occupancy rose by roughly 0.05 per year (95% CI ≈ 0.03--0.06), followed by long-legged myotis (MYVO; *Myotis volans*; ≈ 0.03 per year) and long-eared myotis (MYEV; *M. evotis*; ≈ 0.02 per year). Although big brown bat showed a positive slope, the first-to-last-year comparison did not reach the 0.95 threshold so the trend was deemed uncertain. \<--MAKE SURE TO UPDATE THE NUMBERS TO ACTUALLY MATCH THE OUTPUTS FROM THE MODEL.
 
-![Estimated occupancy trends for 15 bat species in British Columbia (2017--2025) from a dynamic occupancy model fit to all sites. Points show the posterior mean of the linear slope of occupancy on year (change in occupancy probability per year), and horizontal bars show 95% credible intervals. The dashed line marks no change. Green indicates a posterior probability ≥ 0.95 that occupancy in 2025 exceeded that in 2017; grey indicates an uncertain trend.](Figures/DOccupancy/figB_bc_trends_all_species.png){#fig-sppocc .lightbox}
+![Estimated occupancy trends for 15 bat species in British Columbia (2017--2025) from a dynamic occupancy model fit to all sites. Points show the posterior mean of the linear slope of occupancy on year (change in occupancy probability per year), and horizontal bars show 95% credible intervals. The dashed line marks no change. Green indicates a posterior probability ≥ 0.95 that occupancy in 2025 exceeded that in 2017; grey indicates an uncertain trend.](Figures/DOccupancy/figB_bc_trends_all_species.png){#fig-sppocc}
 
 Regionally we see that in the Northern region trends all seem to be stable with bat occupancy nethier increasing or decreasing (@fig-regocc) . For the three other regions there seems to be a steady increase in occupancy for many bats. The only species showing a decrease in occupancy is Fringed Myotis (MYTH) in the Okanagan region.
 
@@ -1334,11 +1389,11 @@ Field crews across British Columbia continue to reliably collect recordings for 
 
 The BC NABat program has yielded a large and robust acoustic dataset that provides solid baseline information on distribution and relative abundance of 12 of 15 resident BC bat species. The data that has been collected so far are an invaluable reference point for BC's bat distributions and activity that improve with each additional year of monitoring. Key considerations for the future of the program include:
 
--   **Manual Verification Efficiency.** This was the first year that the BC monitoring program reduced the proportion of manual vetting carried out in the recordings to \~50% based on the findings from Stratton et al. (2022). Careful consideration of these results compared to previous years will be considered as a guide for future models and analyses.
+- **Manual Verification Efficiency.** This was the first year that the BC monitoring program reduced the proportion of manual vetting carried out in the recordings to \~50% based on the findings from Stratton et al. (2022). Careful consideration of these results compared to previous years will be considered as a guide for future models and analyses.
 
--   **Transect Sampling.** Transects are a relatively high labour/effort source of data than stationary detectors that require participants to work late into the night. They also often do not collect many recordings of bats in BC relative to the stationary detectors. However, transects are still the only source of reliable estimates of relative abundance. While continuing to support current transect sampling efforts, the NNW Bat Hub will work along side other partners to also explore other methods of creating reliable abundance estimates that are less labour intensive.
+- **Transect Sampling.** Transects are a relatively high labour/effort source of data than stationary detectors that require participants to work late into the night. They also often do not collect many recordings of bats in BC relative to the stationary detectors. However, transects are still the only source of reliable estimates of relative abundance. While continuing to support current transect sampling efforts, the NNW Bat Hub will work along side other partners to also explore other methods of creating reliable abundance estimates that are less labour intensive.
 
--   **Adding new grid cells.** Efforts will continue to be made to monitor as many of the same grid cells as possible, as the power of the dataset improves with each additional year. Moreover, looking for new opportunities to add new grid cells especially in under sampled regions of the province can help fill knowledge gaps for species distributions. New cells could also be added within ranges of species that are not widespread but easily monitored using acoustics. For example, Fringed Myotis and Spotted Bats are highly suited to acoustic surveillance, but only occur within a small portion of the grid cells being monitored currently
+- **Adding new grid cells.** Efforts will continue to be made to monitor as many of the same grid cells as possible, as the power of the dataset improves with each additional year. Moreover, looking for new opportunities to add new grid cells especially in under sampled regions of the province can help fill knowledge gaps for species distributions. New cells could also be added within ranges of species that are not widespread but easily monitored using acoustics. For example, Fringed Myotis and Spotted Bats are highly suited to acoustic surveillance, but only occur within a small portion of the grid cells being monitored currently
 
 # Appendix A
 
