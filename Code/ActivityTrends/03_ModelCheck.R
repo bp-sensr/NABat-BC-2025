@@ -424,7 +424,7 @@ cat("DHARMa/RE interaction artefact. KS uniformity test is used as the primary\n
 cat("distributional fit check in this scenario.\n")
 
 # Save
-write.csv(diag_table, "model_diagnostics_full.csv", row.names = FALSE)
+write.csv(diag_table, "Data/Analyzed/ActivityTrends/model_diagnostics_full.csv", row.names = FALSE)
 cat("\nFull diagnostics saved to: model_diagnostics_full.csv\n")
 
 # -----------------------------------------------------------------------------
@@ -603,7 +603,7 @@ cat("Do Not Report            : Convergence failure, severe overdispersion,\n")
 cat("                           insufficient data, or YearS completely unreliable.\n")
 
 # Save
-write.csv(diag_table, "Data/Analyzed/model_diagnostics_full.csv", row.names = FALSE)
+write.csv(diag_table, "Data/Analyzed/ActivityTrends/reg_model_diagnostics_full.csv", row.names = FALSE)
 cat("\nFull diagnostics saved to: model_diagnostics_full.csv\n")
 
 # -----------------------------------------------------------------------------

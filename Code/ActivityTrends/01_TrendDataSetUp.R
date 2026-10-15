@@ -1,14 +1,29 @@
 #This code helps us check and format the raw data to be used for the trend analyses
 
-#For activity trend analyses only using the output from Kaleidoscope
-
-bat.data <- readxl::read_excel("Data/Raw/AllYearActivitybyNight_2016_2025_BC_withALLmetadata.xlsx", sheet = "OccupancyKSP_NEAR")
+#For activity trend analyses only using the output from Kaleidoscope\
+bat.data <- readxl::read_excel("Data/Raw/AllYearActivitybyNight_2016-2025_BC_withCovariates.xlsx", sheet = "OccupancyKSP",.name_repair = ~ gsub("\\s+", "_", trimws(.x)))
 bat.data$Year <- lubridate::year(bat.data$Night)
 #remove data from 2015 and prior since it is not consistent or clean enough
 bat.data <- bat.data[bat.data$Year>2015,]
+#create column for jNight
+bat.data$jNight <- as.numeric(format(as.Date(bat.data$Night), "%j"))
+#update water nearby based on new water distance
+bat.data$Water_Nearby <- ifelse(bat.data$DIST_WATER_M<100,0,1)
+
+#uplaod transect data from manually verified results only
+bat.transect.data <- readxl::read_excel("Data/Raw/AllYearActivitybyNight_2016-2025_BC_withCovariates.xlsx", sheet = "OccupancyManual", .name_repair = ~ gsub("\\s+", "_", trimws(.x)))
+#---Make sure it is properly formatted and remove stationary
+bat.transect.data <- bat.transect.data[bat.transect.data$Quadrant =="Transects",]
+bat.transect.data$Year <- lubridate::year(bat.transect.data$Night)
+#create column for jNight
+bat.transect.data$jNight <- as.numeric(format(as.Date(bat.transect.data$Night), "%j"))
+#update water nearby based on new water distance
+bat.transect.data$Water_Nearby <- ifelse(bat.transect.data$DIST_WATER_M<100,0,1)
+#make sure Tlength is numeric
+bat.transect.data$Tlength <- as.numeric(bat.transect.data$Tlength)
 
 #------CHECK OF THE DATA-----------
-# Check how may grids per year-----------------------------------------------------------------
+# Check how many sites per year-----------------------------------------------------------------
 xtabs(~Region+Year, data=bat.data, exclude=NULL, na.action=na.pass)
 
 #check the grid cells--------------------------------------------------------------------------
@@ -40,12 +55,12 @@ ggplot(data=bat.data, aes(x=Longitude, y=Latitude,color=as.factor(Year)))+
   geom_point( position=position_jitter(h=.1, w=.1), shape=1)
 
 # Check covariates:Distance Clutter-------------------------------------------------------------------------------
-xtabs(~Distance_to_Clutter__m_,data=bat.data, exclude=NULL, na.action=na.pass)
+xtabs(~Distance_to_Clutter__(m),data=bat.data, exclude=NULL, na.action=na.pass)
 #cap the maximum distance to 75m for modeling purposes
-bat.data$Distance_to_Clutter__m_[bat.data$Distance_to_Clutter__m_ > 75] <- 75
-xtabs(~Distance_to_Clutter__m_,data=bat.data, exclude=NULL, na.action=na.pass)
+bat.data$Distance_to_Clutter__(m)[bat.data$Distance_to_Clutter__(m) > 75] <- 75
+xtabs(~Distance_to_Clutter__(m),data=bat.data, exclude=NULL, na.action=na.pass)
 #get the percentage of rows with no distance to clutter
-mean(is.na(bat.data$Distance_to_Clutter__m_))
+mean(is.na(bat.data$Distance_to_Clutter__(m)))
 
 # Check covariates:Percent Clutter-------------------------------------------------------------------------------
 xtabs(~Percent_Clutter,data=bat.data, exclude=NULL, na.action=na.pass)
@@ -98,13 +113,13 @@ bat.data.species <- c("ANPA", "COTO", "EPFU", "EUMA", "LABO", "LACI", "LANO", "M
 #----------Now that you've checked to make sure all the data looks good set it up so it's ready for running models----------------------------------
 
 #separate transect from stationary data
-bat.transect.data <- bat.data[ bat.data$Quadrant == "Transects",]
 bat.data <- bat.data[ bat.data$Quadrant != "Transects",]
 
-#Need to add the TLength to the transect data
-
 #create summarized detection counts for all nights for each species. 
+
 #This code has different columns for single, all couplets included, and couplets include only when there is a single
+#list all species that you are interested in
+species.id <- bat.data.species
 
 ##For Stationary
 bat.data.long <- plyr::ldply(species.id, function(species, bat.data){
@@ -185,4 +200,4 @@ for(region in unique_regions) {
   print(regional_avg_plot)
 }
 
-##
+## Now use the bat.data.long and bat.transect.data.long to run the models in 02_ModelSelection

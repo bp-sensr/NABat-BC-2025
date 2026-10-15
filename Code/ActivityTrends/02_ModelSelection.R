@@ -141,6 +141,7 @@ fit_one_model <- function(cell.summary, var_string) {
 
 
 # ── 3.  Main loop: fit all candidates per species, rank by AIC ───────────────
+
 sploc <- read.csv("Data/Raw/sploc.csv",check.names = FALSE, row.names = 1)
 bc.fits.cov.singlet <- plyr::dlply(bat.data.long, "SpeciesGroup", function(x) {
   
@@ -164,7 +165,7 @@ bc.fits.cov.singlet <- plyr::dlply(bat.data.long, "SpeciesGroup", function(x) {
   # ── Summarise to cell × year × quadrant
   cell.summary <- plyr::ddply(
     x, c("Year", "GRTS_Cell_ID", "Quadrant"), plyr::summarize,
-    YearS              = Year[1] - 2015,
+    YearS              = Year[1] - 2016,
     total.detect       = sum(SpeciesSingleton),
     quad.nights        = length(SpeciesSingleton),
     Nightly_Mean_Temp  = mean(Nightly_Mean_Temp,  na.rm = TRUE),
@@ -174,11 +175,11 @@ bc.fits.cov.singlet <- plyr::dlply(bat.data.long, "SpeciesGroup", function(x) {
     Nightly_Mean_Windsp= mean(Nightly_Mean_Windsp,na.rm = TRUE),
     dd                 = mean(dd,                  na.rm = TRUE),
     jNight             = mean(jNight),
-    moon_fraction_above_horizon            = mean(moon_fraction_above_horizon,na.rm = TRUE),
-    moon     = mean(moon, na.rm = TRUE),
+    moon_fraction_above_horizon   = mean(moon_fraction_above_horizon,na.rm = TRUE),
+    moon               = mean(moon_illumination, na.rm = TRUE),
     Feature_Sampled    = unique(Feature_Sampled,   na.rm = TRUE)[1],
     Habitat_Type       = unique(Habitat_Type,      na.rm = TRUE)[1],
-    Distance_to_Clutter__m_        = median(Distance_to_Clutter__m_ , na.rm = TRUE),
+    Distance_to_Clutter__m_        = median(`Distance_to_Clutter_(m)` , na.rm = TRUE),
     Percent_Clutter    = mean(Percent_Clutter,     na.rm = TRUE),
     Water_Nearby       = median(Water_Nearby,      na.rm = TRUE)
   )
@@ -270,7 +271,7 @@ kable(temptable, row.names=FALSE,
   kable_styling("bordered",position = "center", full_width=FALSE, latex_options = "HOLD_position")  ####%$%$
 
 
-write.csv(bc.cov.slope.summary.singlet, file="C:/Users/cami/Documents/NABat-BC-2025/Data/Analyzed/bc.cov.estimates.singlet.csv", row.names=FALSE)
+write.csv(bc.cov.slope.summary.singlet, file="Data/Analyzed/ActivityTrends/bc.cov.estimates.singlet.csv", row.names=FALSE)
 
 
 ##-------------------------Make the vars lists best on the best fit models---------------------
@@ -284,7 +285,7 @@ varlists <- do.call(rbind, lapply(names(bc.fits.cov.singlet), function(sp) {
   )
 }))
 
-write.csv(varlists,"C:/Users/cami/Documents/NABat-BC-2025/Data/Analyzed/ModelVariables.csv")
+write.csv(varlists,"Data/Analyzed/ActivityTrends/ModelVariables.csv")
 
 ##Model Selection for transect models in report
 # ── 1. Define candidate variable sets ──────────────────────────────────────
@@ -335,7 +336,7 @@ fit_one_transect_model <- function(cell.summary, var_string) {
   check_cols <- check_cols[check_cols %in% names(cell.summary)]
   
   data_clean <- tidyr::drop_na(cell.summary, any_of(check_cols))
-  
+
   if (nrow(data_clean) < 5) return(NULL)
   
   # Build formula — keeps transect.length and single random effect
@@ -380,7 +381,7 @@ bc.auto.transect.fits.cov.singlet <- plyr::dlply(bat.transect.data.long, "Specie
                               Nightly_Mean_RH     = mean(Nightly_Mean_RH,     na.rm = TRUE),
                               Nightly_Mean_Windsp = mean(Nightly_Mean_Windsp, na.rm = TRUE),
                               moon_fraction_above_horizon            = mean(moon_fraction_above_horizon,na.rm = TRUE),
-                              moon      = mean(moon,      na.rm = TRUE))
+                              moon      = mean(moon_illumination,      na.rm = TRUE))
   
   cell.summary$GRTS_Cell_ID <- as.factor(cell.summary$GRTS_Cell_ID)
   
@@ -441,10 +442,14 @@ print(all_aic_transect, row.names = FALSE)
 best_fits_transect <- lapply(bc.auto.transect.fits.cov.singlet, `[[`, "best_fit")
 
 bc.transect.cov.slope.summary.singlet <- plyr::ldply(best_fits_transect, function(x){
-  summary.table <- summary(x)
-  #browser()
-  slope   <- as.data.frame(summary.table$coefficients$cond[2,, drop=FALSE])
-  slope$intercept <- summary.table$coefficients$cond[1,,drop=FALSE]
+  if (is.null(x)) return(NULL)                     # no model fitted
+  if (!inherits(x, "glmmTMB")) return(NULL)        # try-error, NA, etc.
+  cf <- tryCatch(summary(x)$coefficients$cond, error = function(e) NULL)
+  if (is.null(cf) || nrow(cf) < 2) return(NULL)    # summary failed or intercept-only
+  slope <- as.data.frame(cf[2, , drop = FALSE])
+  slope$term         <- rownames(cf)[2]
+  slope$intercept    <- cf[1, "Estimate"]
+  slope$intercept.se <- cf[1, "Std. Error"]
   slope
 })
 #bc.slope.summary
@@ -455,7 +460,7 @@ bc.transect.cov.slope.summary.singlet <- plyr::rename(bc.transect.cov.slope.summ
 bc.transect.cov.slope.summary.table.singlet <- bc.transect.cov.slope.summary.singlet[,c("SpeciesGroup","Estimate","SE","p.value")]
 bc.transect.cov.slope.summary.table.singlet[,"p.value"] <- insight::format_p(bc.transect.cov.slope.summary.table.singlet[,"p.value"])
 
-write.csv(bc.transect.cov.slope.summary.table.singlet, file="C:/Users/cami/Documents/NABat-BC-2025/Data/Analyzed/bc.transect.cov.estimates.csv", row.names=FALSE)
+write.csv(bc.transect.cov.slope.summary.table.singlet, file="Data/Analyzed/ActivityTrends/bc.transect.cov.estimates.csv", row.names=FALSE)
 
 
 # ── 6. Save variable list for best models ────────────────────────────────────
@@ -470,4 +475,127 @@ varlists_transect <- do.call(rbind, lapply(names(bc.auto.transect.fits.cov.singl
   )
 }))
 
-write.csv(varlists_transect, "C:/Users/cami/Documents/NABat-BC-2025/Data/Analyzed/ModelVariables_Transect.csv")
+write.csv(varlists_transect, "Data/Analyzed/ActivityTrends/ModelVariables_Transect.csv")
+
+
+##Running regional models
+###-------------------------------Full Regional Models Updated 2025---------------------------------------
+# Get all regions (excluding NA)
+regions <- unique(bat.data.long$Region[!is.na(bat.data.long$Region)])
+
+# Run models across all regions
+all.region.fits <- plyr::dlply(
+  bat.data.long[!bat.data.long$Year %in% c(2015) &
+                  !is.na(bat.data.long$SpeciesGroup), ],
+  c("Region"),
+  function(region_data) {
+    
+    current_region <- region_data$Region[1]
+    cat("\n\n===== Fitting models for region:", current_region, "=====\n")
+    
+    region_data$GRTS_Cell_ID <- as.character(region_data$GRTS_Cell_ID)
+    
+    plyr::dlply(region_data, c("SpeciesGroup"), function(x) {
+      
+      cat("\n\nFit cov singleton - Start to fit species groups", x$SpeciesGroup[1], "\n")
+      
+      # Identify variables of interest
+      print(strsplit(varlists[varlists$sp == x$SpeciesGroup[1], "vars"], ",")[[1]])
+      vars <- strsplit(varlists[varlists$sp == x$SpeciesGroup[1], "vars"], ",")[[1]]
+      
+      check <- unlist(sapply(strsplit(vars, split = '*', fixed = TRUE), `[`, simplify = "TRUE"))
+      print(check)
+      x <- x %>% drop_na(any_of(check))
+      
+      vars <- append(c(""), vars)
+      
+      # Filter to GRTS cells where species was surveyed
+      spgr_row <- sploc[x$SpeciesGroup[1], ]
+      grts_list <- names(spgr_row)[spgr_row == TRUE]
+      grts_in_both <- intersect(unique(x$GRTS_Cell_ID), grts_list)
+      
+      if (length(grts_in_both) > 0) {
+        x <- x[x$GRTS_Cell_ID %in% grts_in_both, ]
+        cat("Filtered to", length(grts_in_both), "GRTS cells present in both data and sploc\n")
+      } else {
+        cat("No overlapping GRTS cells found - using all data for this species\n")
+      }
+      
+      if (nrow(x) == 0) {
+        cat("No data remaining after filtering for species group\n")
+        return(NULL)
+      }
+      
+      print(n_distinct(x$GRTS_Cell_ID))
+      
+      cell.summary <- plyr::ddply(
+        x, c("Year", "GRTS_Cell_ID", "Quadrant"), plyr::summarize,
+        YearS              = Year[1] - 2016,
+        total.detect       = sum(SpeciesSingleton),
+        quad.nights        = length(SpeciesSingleton),
+        Nightly_Mean_Temp  = mean(Nightly_Mean_Temp,  na.rm = TRUE),
+        Nightly_Min_Temp   = mean(Nightly_Min_Temp,   na.rm = TRUE),
+        Nightly_Max_Temp   = mean(Nightly_Max_Temp,   na.rm = TRUE),
+        Nightly_Mean_RH    = mean(Nightly_Mean_RH,    na.rm = TRUE),
+        Nightly_Mean_Windsp= mean(Nightly_Mean_Windsp,na.rm = TRUE),
+        dd                 = mean(dd,                  na.rm = TRUE),
+        jNight             = mean(jNight),
+        moon_fraction_above_horizon   = mean(moon_fraction_above_horizon,na.rm = TRUE),
+        moon               = mean(moon_illumination, na.rm = TRUE),
+        Feature_Sampled    = unique(Feature_Sampled,   na.rm = TRUE)[1],
+        Habitat_Type       = unique(Habitat_Type,      na.rm = TRUE)[1],
+        Distance_to_Clutter__m_        = median(`Distance_to_Clutter_(m)` , na.rm = TRUE),
+        Percent_Clutter    = mean(Percent_Clutter,     na.rm = TRUE),
+        Water_Nearby       = median(Water_Nearby,      na.rm = TRUE)
+      )
+      cell.summary$countperquad <- cell.summary$total.detect / cell.summary$quad.nights
+      
+      if (!is.na(x$SpeciesGroup[1]) && x$SpeciesGroup[1] == "LACI") {
+        cell.summary <- cell.summary[(cell.summary$countperquad < 75), ]
+      }
+      
+      if (nrow(cell.summary) == 0) {
+        cat("No data remaining after summary/filtering\n")
+        return(NULL)
+      }
+      
+      form <- paste("total.detect ~ YearS + log(quad.nights) + (1|GRTS_Cell_ID) + (1|Quadrant)",
+                    paste(vars, collapse = " + "), collapse = "")
+      cat("Formula:", form, "\n")
+      
+      fit <- tryCatch({
+        glmmTMB::glmmTMB(formula = formula(form), family = nbinom2(link = "log"),
+                         data = cell.summary, se = TRUE, verbose = FALSE)
+      },
+      error = function(cond) {
+        cat("glmmTMB error:", conditionMessage(cond), "\n")
+        return(NULL)
+      },
+      warning = function(cond) {
+        cat("glmmTMB warning:", conditionMessage(cond), "\n")
+        return(NULL)
+      })
+      
+      if (is.null(fit)) cat("Model failed to converge for", x$SpeciesGroup[1], "\n")
+      
+      fit
+    })
+  }
+)
+
+summary(all.region.fits[["Okanagan Region"]][["MYLU"]])
+
+all.region.slope.summary.singlet <- plyr::ldply(all.region.fits, function(region_fits) {
+  plyr::ldply(region_fits, function(x) {
+    if (is.null(x)) return(NULL)
+    
+    summary.table <- summary(x)
+    slope <- as.data.frame(summary.table$coefficients$cond[2, , drop = FALSE])
+    slope$intercept <- summary.table$coefficients$cond[1, , drop = FALSE]
+    slope$n <- nobs(x)
+    slope
+  }, .id = "SpeciesGroup")
+}, .id = "Region")
+
+write.csv(all.region.slope.summary.singlet,"Data/Analyzed/ActivityTrends/region.slope.summary.singlet.csv") #this is what will be added to the report
+

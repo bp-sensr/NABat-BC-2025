@@ -220,8 +220,8 @@ parksSamplingE$X <- NULL
 SampledGrids2025 <- samplingE$`Number of Grids`[samplingE$Year==2025]
 
 # Load the model covariates summary table
-model_covariates <- read.csv("Data/Analyzed/ModelVariables.csv")
-transect_covariates <- read.csv("Data/Analyzed/ModelVariables_Transect.csv")
+model_covariates <- read.csv("Data/Analyzed/ActivityTrends/ModelVariables.csv")
+transect_covariates <- read.csv("Data/Analyzed/ActivityTrends/ModelVariables_Transect.csv")
 #this comes from running the ModelSelection.R code where it runs all of the covariates and chooses the best model best on AIC
 
 #upload summary data for map
@@ -550,8 +550,8 @@ m_full
 #| warning: false
 #| message: false
 
-bc.cov.slope.summary.singlet <- read.csv("Data/Analyzed/bc.cov.estimates.singlet.csv")
-bc.cov.slope.transect <- read.csv("Data/Analyzed/bc.transect.cov.estimates.csv")
+bc.cov.slope.summary.singlet <- read.csv("Data/Analyzed/ActivityTrends/bc.cov.estimates.singlet.csv")
+bc.cov.slope.transect <- read.csv("Data/Analyzed/ActivityTrends/bc.transect.cov.estimates.csv")
 
 # Species excluded from stationary reporting due to insufficient precision
 excluded_stationary <- c("LABO", "MYSE", "MYCI", "ANPA")
@@ -645,7 +645,7 @@ merged_table <- merged_table %>%
 #| message: false
 
 
-region.cov.slope.summary.singlet <- read.csv("Data/Analyzed/region.slope.summary.singlet.csv")
+region.cov.slope.summary.singlet <- read.csv("Data/Analyzed/ActivityTrends/region.slope.summary.singlet.csv")
 
 # Species excluded from stationary reporting due to insufficient precision
 excluded_stationary <- c("LABO", "MYSE", "MYCI", "ANPA")
