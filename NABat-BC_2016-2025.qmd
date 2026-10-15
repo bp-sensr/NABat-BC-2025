@@ -649,6 +649,7 @@ region.cov.slope.summary.singlet <- read.csv("Data/Analyzed/ActivityTrends/regio
 
 # Species excluded from stationary reporting due to insufficient precision
 excluded_stationary <- c("LABO", "MYSE", "MYCI", "ANPA")
+excluded_transect <- c ("LABO", "MYSE", "ANPA", "COTO", "MYTH", "EUMA")
 
 # Define desired species display order (adjust to match your table)
 species_order <- c("ANPA", "COTO", "EPFU", "EUMA", "LABO", "LACI", "LANO",
