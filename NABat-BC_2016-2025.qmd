@@ -1316,13 +1316,13 @@ if (is_html) {
 
 ## Dynamic Occupancy Models
 
-Occupancy increased across British Columbia between 2017 and 2025 for 4 of the 15 species modelled (@fig-sppocc).
+Occupancy increased across British Columbia between 2017 and 2025 for 4 of the 15 species modelled (@fig-sppocc). Need to clarify EPFU. Highlight MYEV, MYLU, MYSE and LANO seem to be consistenly increasing, while MYTH is decreasing
 
-![Estimated occupancy trends for 15 bat species in British Columbia (2017--2025) from a dynamic occupancy model fit to all sites. Points and bars show the posterior mean and 95% credible interval of the linear change in occupancy per year. The dashed line marks zero, where the mean yearly change in occupancy is zero. Colour shows the posterior probability (at ≥ 0.95) that the occupancy in 2025 was higher (green) or lower (red) than in 2017 . Grey means the probability is uncertain. Slope and colour can disagree when trends are non-linear.](Figures/DOccupancy/figB_bc_trends_all_species.png){#fig-sppocc}
+![Estimated occupancy trends for 15 bat species in British Columbia (2017--2025) fit across all monitoring sites. Points and bars show the posterior mean and 95% credible interval of the linear change in occupancy per year. The dashed line marks zero, where there is no change in mean yearly opccupancy. Colour shows the posterior probability (at ≥ 0.95) that the occupancy in 2025 was higher (green) or lower (red) than in 2017 . Grey means the probability is uncertain. Slope and colour can disagree when trends are non-linear.](Figures/DOccupancy/figB_bc_trends_all_species.png){#fig-sppocc}
 
-Regionally we see that in the Northern region trends all seem to be stable with bat occupancy nethier increasing or decreasing (@fig-regocc) . For the three other regions there seems to be a steady increase in occupancy for many bats. The only species showing a decrease in occupancy is Fringed Myotis (MYTH) in the Okanagan region.
+Regionally the Kootnay region seems to be great fro increasing bat (@fig-regocc). Northern is where we see decrease in EPFU and potentially LABO. LACI decreasing in South Coastal. MYTH and MYYU decrease in Okanagan.
 
-![Regional estimated occupancy trends for 15 bat species in British Columbia (2017--2025) from a dynamic occupancy model. Points and bars show the posterior mean and 95% credible interval of the linear change in occupancy per year. The dashed line marks zero, where the mean yearly change in occupancy is zero. Colour shows the posterior probability (at ≥ 0.95) that the occupancy in 2025 was higher (green) or lower (red) than in 2017 . Grey means the probability is uncertain. Slope and colour can disagree when trends are non-linear.](Figures/DOccupancy/figC_regional_trends_all_species.png){#fig-regocc}
+![Regional estimated occupancy trends for 15 bat species in British Columbia (2017--2025). Points and bars show the posterior mean and 95% credible interval of the linear change in occupancy per year. The dashed line marks zero, where there is no change in mean yearly occupancy. Colour shows the posterior probability (at ≥ 0.95) that the occupancy in 2025 was higher (green) or lower (red) than in 2017 . Grey means the probability is uncertain. Slope and colour can disagree when trends are non-linear.](Figures/DOccupancy/figC_regional_trends_all_species.png){#fig-regocc}
 
 ```{r}
 #| label: fig-occ-slider
