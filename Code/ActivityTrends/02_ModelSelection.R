@@ -128,7 +128,7 @@ fit_one_model <- function(cell.summary, var_string) {
   # Build formula
   rhs_covs <- if (length(vars_vec) > 0) paste("+", paste(vars_vec, collapse = " + ")) else ""
   form <- paste0(
-    "total.detect ~ YearS + log(quad.nights) + (1|GRTS_Cell_ID) + (1|Quadrant)",
+    "total.detect ~ YearS + log(quad.nights) + (1|GRTS_Cell_ID/Quadrant)",
     rhs_covs
   )
   
@@ -565,7 +565,7 @@ all.region.fits <- plyr::dlply(
         return(NULL)
       }
       
-      form <- paste("total.detect ~ YearS + log(quad.nights) + (1|GRTS_Cell_ID) + (1|Quadrant)",
+      form <- paste("total.detect ~ YearS + log(quad.nights) + (1|GRTS_Cell_ID/Quadrant)",
                     paste(vars, collapse = " + "), collapse = "")
       cat("Formula:", form, "\n")
       

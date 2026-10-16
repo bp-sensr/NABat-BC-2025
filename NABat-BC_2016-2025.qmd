@@ -219,6 +219,11 @@ parksSamplingE$X <- NULL
 #get the number of grids sampled in 2025
 SampledGrids2025 <- samplingE$`Number of Grids`[samplingE$Year==2025]
 
+# Species excluded from stationary reporting due to insufficient precision or data
+excluded_stationary <- c("PAHE", "TABR")
+excluded_transect <- c("EUMA","LABO","MYSE","MYTH","COTO","MYCI")
+excluded_regional <- c("PAHE", "TABR")
+
 # Load the model covariates summary table
 model_covariates <- read.csv("Data/Analyzed/ActivityTrends/ModelVariables.csv")
 transect_covariates <- read.csv("Data/Analyzed/ActivityTrends/ModelVariables_Transect.csv")
@@ -251,6 +256,7 @@ species_names <- c(
 
 # Clean covariate from models and format for report
 model_covariates<- model_covariates %>%
+  filter(!sp %in% excluded_stationary) %>%
   mutate(
     Common_Name = species_names[sp],
     Covariates = vars
@@ -258,6 +264,7 @@ model_covariates<- model_covariates %>%
   select(Common_Name, Species_Code = sp, Covariates)
 
 transect_covariates<- transect_covariates %>%
+  filter(!sp %in% excluded_transect) %>%
   mutate(
     Common_Name = species_names[sp],
     Covariates = vars
@@ -553,8 +560,6 @@ m_full
 bc.cov.slope.summary.singlet <- read.csv("Data/Analyzed/ActivityTrends/bc.cov.estimates.singlet.csv")
 bc.cov.slope.transect <- read.csv("Data/Analyzed/ActivityTrends/bc.transect.cov.estimates.csv")
 
-# Species excluded from stationary reporting due to insufficient precision
-excluded_stationary <- c("LABO", "MYSE", "MYCI", "ANPA")
 
 # Prepare stationary data
 stationary <- bc.cov.slope.summary.singlet %>%
@@ -572,6 +577,7 @@ stationary <- bc.cov.slope.summary.singlet %>%
 
 # Prepare transect data
 transect <- bc.cov.slope.transect %>%
+  filter(!SpeciesGroup %in% excluded_transect) %>%
   mutate(
     p_raw     = trimws(p.value),
     p_numeric = as.numeric(sub(".*?([0-9]*\\.[0-9]+).*", "\\1", p_raw)),
@@ -639,7 +645,7 @@ merged_table <- merged_table %>%
 ```
 
 ```{r}
-#| label: regional model covariates prep
+#| label: regional-models-prep
 #| echo: false
 #| warning: false  
 #| message: false
@@ -647,9 +653,18 @@ merged_table <- merged_table %>%
 
 region.cov.slope.summary.singlet <- read.csv("Data/Analyzed/ActivityTrends/region.slope.summary.singlet.csv")
 
-# Species excluded from stationary reporting due to insufficient precision
-excluded_stationary <- c("LABO", "MYSE", "MYCI", "ANPA")
-excluded_transect <- c ("LABO", "MYSE", "ANPA", "COTO", "MYTH", "EUMA")
+# Species x region combinations excluded after model diagnostics
+# (singular fit, < 20 non-zero cell-years, or dispersion ratio >= 2)
+excluded_regional <- tribble(
+  ~Region,                 ~SpeciesGroup,
+  "Kootenay Region",       "LACI",   # singular fit
+  "Northern Region",       "LACI",   # singular fit
+  "Northern Region",       "MYVO",   # singular fit
+  "Okanagan Region",       "ANPA",   # singular fit
+  "Okanagan Region",       "MYVO",   # overdispersion (2.89)
+  "South Coastal Region",  "EUMA",   # singular fit; 6 non-zero cell-years
+  "South Coastal Region",  "LABO"    # singular fit; 9 non-zero cell-years
+)
 
 # Define desired species display order (adjust to match your table)
 species_order <- c("ANPA", "COTO", "EPFU", "EUMA", "LABO", "LACI", "LANO",
@@ -657,6 +672,7 @@ species_order <- c("ANPA", "COTO", "EPFU", "EUMA", "LABO", "LACI", "LANO",
 
 # Process regional data
 regional_wide <- region.cov.slope.summary.singlet %>%
+  anti_join(excluded_regional, by = c("Region", "SpeciesGroup")) %>%
   mutate(
     trend_ci = sprintf("%.2f ± %.2f", Estimate, 1.96 * Std..Error),
     p_val = case_when(
@@ -679,7 +695,7 @@ final_table <- tibble(SpeciesGroup = species_order) %>%
   left_join(regional_wide, by = "SpeciesGroup") %>%
   mutate(Species = species_names[SpeciesGroup])
 
-#identify when html or df for bolding
+# identify when html or latex for bolding
 fmt <- ifelse(knitr::is_html_output(), "html", "latex")
 
 # Apply bolding region by region
@@ -689,30 +705,20 @@ for (reg in regions) {
   sig_col   <- paste0(reg, "_is_sig")
   
   if (trend_col %in% names(final_table)) {
-    final_table[[trend_col]] <- ifelse(
-      final_table$SpeciesGroup %in% excluded_stationary,
-      "",
-      ifelse(
-        !is.na(final_table[[sig_col]]) & final_table[[sig_col]] == TRUE,
-        cell_spec(final_table[[trend_col]], bold = TRUE, format = fmt),
-        final_table[[trend_col]]
-      )
-    )
-    final_table[[p_col]] <- ifelse(
-      final_table$SpeciesGroup %in% excluded_stationary,
-      "",
-      ifelse(
-        !is.na(final_table[[sig_col]]) & final_table[[sig_col]] == TRUE,
-        cell_spec(final_table[[p_col]], bold = TRUE, format = fmt),
-        final_table[[p_col]]
-      )
-    )
+    sig <- !is.na(final_table[[sig_col]]) & final_table[[sig_col]]
+    final_table[[trend_col]] <- ifelse(sig,
+                                       cell_spec(final_table[[trend_col]], bold = TRUE, format = fmt),
+                                       final_table[[trend_col]])
+    final_table[[p_col]] <- ifelse(sig,
+                                   cell_spec(final_table[[p_col]], bold = TRUE, format = fmt),
+                                   final_table[[p_col]])
   }
 }
 
 # Drop is_sig columns and select final columns
 final_table <- final_table %>%
   select(Species, all_of(paste0(rep(regions, each = 2), c("_trend_ci", "_p_val"))))
+
 # Replace NA values with empty strings
 final_table <- final_table %>%
   mutate(across(everything(), ~ replace_na(as.character(.x), "")))
@@ -1052,13 +1058,15 @@ kable(model_covariates,
 All models followed the same basic structure, modelling the total number of detected calls as a negative binomial response with log link:
 
 ``` r
-Total detections ~ YearS + log(Sample Nights) + (1|Grid Cell ID) + (1|Quadrant) 
+Total detections ~ YearS + log(Sample Nights) + (1|Grid Cell ID/Quadrant) 
 + species specific covariates
 ```
 
-Where total detections is the total number of detected calls of a given species at a site in a given year. YearS is the standardized survey year (years since 2016) and provides the estimate of the temporal activity trend. log(Sample Nights) is the natural logarithm of the number of detector-nights and accounts for variation in sampling effort among site-years. The random intercepts (1\|Grid Cell ID) and (1\|Quadrant) allow baseline activity to vary among grid cells and among quadrants within them, respectively.
+Where total detections is the total number of detected calls of a given species at a site in a given year. YearS is the standardized survey year (years since 2016) and provides the estimate of the temporal activity trend. log(Sample Nights) is the natural logarithm of the number of detector-nights and accounts for variation in sampling effort among site-years. The random intercept (1\|Grid Cell ID/Quadrant) gives one random intercept per cell, plus one per specific quadrant within a cell. This allow baseline activity to vary among grid cells and the quadrants within them.
 
-Post-hoc tests were run on the final models to ensure proper model fit. Species were excluded from the analysis if model fit was not appropriate due to issues including under-dispersion or standard errors that were more than 3 times the estimate. Model results were also excluded if there was less than 150 recordings across all sample years. We conducted our statistical analyses on provincial and regional scales. For the regional analyses, we assigned all sampled grid cells into four geographic regions (Southwestern, Southcentral, Southeastern, and Northern), each roughly corresponding to different species sets (@fig-map).
+Model fit was assessed for each final model using simulation-based scaled residuals from the DHARMa package, with 1,000 simulations per model. For each model, we inspected residual quantile–quantile plots and plots of residuals against predicted values and against each predictor. Because large sample sizes can make trivial deviations statistically significant, we evaluated the magnitude of each deviation alongside its p-value to determine good model fit[@harrison2018].
+
+We conducted our statistical analyses at provincial and regional scales. For the regional analyses, we assigned all sampled grid cells to four geographic regions (Southwestern, Southcentral, Southeastern and Northern), each roughly corresponding to a different species set (@fig-map).
 
 #### Use of Automated Identification Results in Stationary Trend Analyses
 
@@ -1195,6 +1203,8 @@ if (is_html) {
 
 ## Activity and Abundance Trend Models
 
+This was the first year where the stationary acoustics activity trend models were modelled for all species. Our post hoc model tests showed that all the models fit ok, especially if only looking at general direction of the activity trends. ANPA still had few detections so although we are reporting it be careful. \
+\
 We estimated yearly trends in nightly acoustic activity for `r sum(merged_table$stationary_trend != "", na.rm = TRUE)` of BC's 15 resident species. Transect data was sufficient to estimate trends for `r sum(merged_table$transect_trend != "", na.rm = TRUE)` species in BC (@tbl-modelcov). Of the stationary models, four species showed statistically significant positive trends (p \< 0.05)
 
 - Townsend's Big-eared Bat (`r merged_table$stationary_trend[merged_table$Species == "Townsend's Big-eared Bat"]`)
@@ -1204,6 +1214,8 @@ We estimated yearly trends in nightly acoustic activity for `r sum(merged_table$
 - Long-legged Myotis (`r merged_table$stationary_trend[merged_table$Species == "Long-legged Myotis"]`).
 
 - Yuma Myotis (`r merged_table$stationary_trend[merged_table$Species == "Yuma Myotis"]`).
+
+- MYLU had a bit of over dispersion, which likely undestimates the confidence intervals, so be skeptical of this result
 
 The remaining 7 species had non-significant trend estimates for stationary acoustics. Transect models yielded results for fewer species, with significant positive result for the little brown Myotis (`r merged_table$transect_trend [merged_table$Species == "Little Brown Myotis"]`) and the long-legged Myotis (`r merged_table$transect_trend [merged_table$Species == "Long-legged Myotis"]`)
 

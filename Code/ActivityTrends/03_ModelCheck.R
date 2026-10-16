@@ -1,653 +1,294 @@
-# =============================================================================
-# Model Reliability Diagnostics for Bat Trend Models (glmmTMB)
-# TREND-FOCUSED VERSION v3
-#
-# Key functionality
-#   - Dispersion stat now assessed directionally:
-#       stat << 1 => underdispersion (simulated variance > observed)
-#       stat >> 1 => overdispersion  (observed variance > simulated)
-#   - Underdispersion with high RE variance is treated as a DHARMa/RE
-#     interaction artefact rather than a true model failure
-#   - Revised disqualifier thresholds reflect this distinction
-#
-# Overall flag categories:
-#   "Report"                   - clean model, trend estimate reliable
-#   "Report with Caveats"      - minor issues, note in methods
-#   "Interpret Direction Only" - fit issues; direction informative,
-#                                magnitude unreliable
-#   "Do Not Report"            - convergence failure, insufficient data,
-#                                true severe overdispersion, or YearS
-#                                completely unreliable
-# =============================================================================
-
-library(glmmTMB)
 library(DHARMa)
-library(dplyr)
-library(tibble)
+library(performance)
+library(insight)
 
-# -----------------------------------------------------------------------------
-# SECTION 1: Helper functions
+# =============================================================================
+# Runs the same diagnostics on two model types:
+#   Stationary: total.detect ~ YearS + log(quad.nights) + (1|GRTS_Cell_ID/Quadrant) + covs
+#   Transect:   total.detect ~ YearS + log(transect.length) + (1|GRTS_Cell_ID) + covs
+# The grouping structure is detected per model: if Quadrant is in the model it
+# is treated as nested within cell; otherwise cell is the only grouping level.
+# =============================================================================
+
+# ---- SETTINGS (shared) -------------------------------------------------------
+n_sim    <- 1000          # DHARMa simulations (250 is faster for a first pass)
+seed     <- 123
+
+response <- "total.detect"
+year_var <- "YearS"
+cell_var <- "GRTS_Cell_ID"
+quad_var <- "Quadrant"
+lon_var  <- "Longitude"
+lat_var  <- "Latitude"
+
+# Coordinates for the spatial test (NULL = skip the spatial test).
+# Stationary: one row per GRTS cell x quadrant, with columns
+#   GRTS_Cell_ID, Quadrant, Longitude, Latitude. Example:
+#   raw <- readxl::read_excel("AllYearActivitybyNight_2016_2025_BC_withALLmetadata.xlsx",
+#                             sheet = "OccupancyKSP_NEAR")
+#   coords_stationary <- aggregate(cbind(Longitude, Latitude) ~ GRTS_Cell_ID + Quadrant,
+#                                  data = raw, FUN = mean)
+# Transect: one row per GRTS cell, with columns GRTS_Cell_ID, Longitude, Latitude
+#   (e.g. transect midpoint). If it also has a Quadrant column, it is averaged
+#   to one point per cell automatically.
+coords_stationary <- NULL
+coords_transect   <- NULL
 # -----------------------------------------------------------------------------
 
-#' Check convergence of a glmmTMB model
-check_convergence <- function(fit) {
-  if (is.null(fit)) {
-    return(list(pass = FALSE, message = "Model failed to fit (NULL)"))
+# ---- Helpers -----------------------------------------------------------------
+
+is_model <- function(x) inherits(x, c("glmmTMB", "merMod"))
+
+# Pull every model object out of a (possibly nested) list
+flatten_models <- function(x, prefix = NULL) {
+  if (is_model(x)) return(setNames(list(x), if (is.null(prefix)) "model" else prefix))
+  if (!is.list(x)) return(list())
+  nms <- names(x)
+  if (is.null(nms)) nms <- as.character(seq_along(x))
+  nms[nms == ""] <- as.character(which(nms == ""))
+  out <- list()
+  for (i in seq_along(x)) {
+    nm  <- if (is.null(prefix)) nms[i] else paste(prefix, nms[i], sep = "_")
+    out <- c(out, flatten_models(x[[i]], nm))
   }
-  conv_code <- tryCatch(fit$fit$convergence, error = function(e) NA)
-  hess_warning <- tryCatch({
-    pdHess <- fit$sdr$pdHess
-    if (is.null(pdHess)) NA else pdHess
-  }, error = function(e) NA)
-  
-  if (is.na(conv_code)) {
-    return(list(pass = FALSE, message = "Could not extract convergence code"))
-  }
-  if (conv_code != 0) {
-    return(list(pass = FALSE, message = paste0("Non-zero convergence code: ", conv_code)))
-  }
-  if (!is.na(hess_warning) && !hess_warning) {
-    return(list(pass = FALSE, message = "Hessian not positive definite (singular/near-singular fit)"))
-  }
-  return(list(pass = TRUE, message = "Converged cleanly"))
+  out
 }
 
-#' Extract the YearS fixed effect estimate and SE
-check_years_effect <- function(fit) {
-  if (is.null(fit)) {
-    return(list(estimate = NA, se = NA, ci_lo = NA, ci_hi = NA,
-                se_ratio = NA, p_value = NA))
-  }
-  coef_table <- tryCatch(
-    summary(fit)$coefficients$cond,
-    error = function(e) NULL
-  )
-  if (is.null(coef_table) || !"YearS" %in% rownames(coef_table)) {
-    return(list(estimate = NA, se = NA, ci_lo = NA, ci_hi = NA,
-                se_ratio = NA, p_value = NA))
-  }
-  est  <- coef_table["YearS", "Estimate"]
-  se   <- coef_table["YearS", "Std. Error"]
-  pval <- coef_table["YearS", "Pr(>|z|)"]
-  
-  ci_lo    <- est - 1.96 * se
-  ci_hi    <- est + 1.96 * se
-  se_ratio <- if (abs(est) > 0) se / abs(est) else NA
-  
-  list(
-    estimate = round(est, 4),
-    se       = round(se, 4),
-    ci_lo    = round(ci_lo, 4),
-    ci_hi    = round(ci_hi, 4),
-    p_value  = round(pval, 4),
-    se_ratio = round(se_ratio, 2)
-  )
-}
-
-#' Run DHARMa dispersion, KS uniformity, and zero-inflation tests
-#'
-#' Dispersion flag logic:
-#'   stat << 1 (< 1):  underdispersion relative to simulation.
-#'                     With high RE variance this commonly reflects the fact
-#'                     that DHARMa simulates from marginal predictions while
-#'                     random effects absorb substantial spatial variance.
-#'                     KS test is used as the primary fit check in this case.
-#'   stat >> 1 (> 1):  overdispersion. Model not capturing enough variance.
-#'                     More likely a genuine fit problem worth acting on.
-check_dharma <- function(fit, n_sim = 500, seed = 42) {
-  if (is.null(fit)) {
-    return(list(
-      dispersion_stat  = NA, dispersion_p    = NA,
-      dispersion_flag  = "Do Not Report", dispersion_dir  = NA,
-      ks_stat          = NA, ks_p            = NA, ks_flag = "Do Not Report",
-      zeroinfl_stat    = NA, zeroinfl_p      = NA, zeroinfl_flag = "Do Not Report"
-    ))
-  }
-  
-  sim_res <- tryCatch({
-    set.seed(seed)
-    simulateResiduals(fittedModel = fit, n = n_sim, plot = FALSE)
-  }, error = function(e) {
-    cat("  DHARMa simulation failed:", conditionMessage(e), "\n")
+safe <- function(expr, label = "") {
+  tryCatch(expr, error = function(e) {
+    message("    ! ", label, " failed: ", conditionMessage(e))
     NULL
   })
-  
-  if (is.null(sim_res)) {
-    return(list(
-      dispersion_stat = NA, dispersion_p = NA,
-      dispersion_flag = "Could not simulate", dispersion_dir = NA,
-      ks_stat = NA, ks_p = NA, ks_flag = "Could not simulate",
-      zeroinfl_stat = NA, zeroinfl_p = NA, zeroinfl_flag = "Could not simulate"
-    ))
-  }
-  
-  # --- Dispersion test ---
-  disp_test <- tryCatch(testDispersion(sim_res, plot = FALSE), error = function(e) NULL)
-  disp_stat <- if (!is.null(disp_test)) round(disp_test$statistic, 4) else NA
-  disp_p    <- if (!is.null(disp_test)) round(disp_test$p.value, 4)   else NA
-  
-  # Direction: underdispersed (stat < 1) vs overdispersed (stat > 1)
-  disp_dir  <- if (is.na(disp_stat)) NA else if (disp_stat < 1) "under" else "over"
-  
-  disp_flag <- if (is.na(disp_p) || is.na(disp_stat)) {
-    "Could not test"
-    
-  } else if (disp_p >= 0.05) {
-    "OK"
-    
-    # --- Underdispersion branch ---
-    # stat << 1: simulated variance >> observed variance
-    # Commonly an artefact of high RE variance inflating DHARMa's simulated
-    # spread. Severity binned for transparency; KS test is primary check.
-  } else if (disp_dir == "under" && disp_stat < 0.1) {
-    "Underdispersion — likely RE/DHARMa artefact (stat very low; check RE variance)"
-  } else if (disp_dir == "under" && disp_stat < 0.5) {
-    "Underdispersion — moderate; check RE variance"
-  } else if (disp_dir == "under") {
-    "Mild underdispersion (significant, stat 0.5-1)"
-    
-    # --- Overdispersion branch ---
-    # stat >> 1: observed variance >> simulated variance
-    # Genuine fit concern; model not capturing enough spread.
-  } else if (disp_dir == "over" && disp_stat > 2.0) {
-    "Severe overdispersion (stat > 2)"
-  } else if (disp_dir == "over" && disp_stat > 1.5) {
-    "Moderate overdispersion (stat 1.5-2)"
-  } else {
-    "Mild overdispersion (significant, stat 1-1.5)"
-  }
-  
-  # --- KS uniformity test (corresponds to QQ plot) ---
-  # Tests whether the overall marginal distribution matches the chosen family.
-  # This is the primary distributional fit check when underdispersion is flagged.
-  ks_res  <- tryCatch(testUniformity(sim_res, plot = FALSE), error = function(e) NULL)
-  ks_stat <- if (!is.null(ks_res)) round(ks_res$statistic, 4) else NA
-  ks_p    <- if (!is.null(ks_res)) round(ks_res$p.value, 4)   else NA
-  ks_flag <- if (is.na(ks_p)) {
-    "Could not test"
-  } else if (ks_p < 0.001) {
-    "Distributional fit poor (KS p < 0.001)"
-  } else if (ks_p < 0.05) {
-    "Distributional fit marginal (KS p 0.001-0.05)"
-  } else {
-    "OK"
-  }
-  
-  # --- Zero-inflation test ---
-  zi_test  <- tryCatch(testZeroInflation(sim_res, plot = FALSE), error = function(e) NULL)
-  zi_stat  <- if (!is.null(zi_test)) round(zi_test$statistic, 3) else NA
-  zi_p     <- if (!is.null(zi_test)) round(zi_test$p.value, 4)   else NA
-  zi_flag  <- if (is.na(zi_p)) {
-    "Could not test"
-  } else if (zi_p < 0.05) {
-    "Zero-inflation detected"
-  } else {
-    "OK"
-  }
-  
-  list(
-    dispersion_stat = disp_stat,
-    dispersion_p    = disp_p,
-    dispersion_flag = disp_flag,
-    dispersion_dir  = disp_dir,
-    ks_stat         = ks_stat,
-    ks_p            = ks_p,
-    ks_flag         = ks_flag,
-    zeroinfl_stat   = zi_stat,
-    zeroinfl_p      = zi_p,
-    zeroinfl_flag   = zi_flag
-  )
 }
 
-#' Count GRTS cells used in a fitted model
-count_grts_cells <- function(fit) {
-  if (is.null(fit)) return(NA_integer_)
-  tryCatch({
-    ngrps <- summary(fit)$ngrps$cond
-    if ("GRTS_Cell_ID" %in% names(ngrps)) as.integer(ngrps[["GRTS_Cell_ID"]]) else NA_integer_
-  }, error = function(e) NA_integer_)
+ht <- function(x, prefix) {
+  if (is.null(x)) return(setNames(list(NA_real_, NA_real_), paste0(prefix, c("_stat", "_p"))))
+  setNames(list(unname(x$statistic[1]), unname(x$p.value)), paste0(prefix, c("_stat", "_p")))
 }
 
-#' Extract total number of observations
-count_obs <- function(fit) {
-  if (is.null(fit)) return(NA_integer_)
-  tryCatch(nobs(fit), error = function(e) NA_integer_)
+bind <- function(lst) {
+  if (!length(lst)) return(NULL)
+  cols <- unique(unlist(lapply(lst, names)))
+  do.call(rbind, lapply(lst, function(d) { d[setdiff(cols, names(d))] <- NA; d[cols] }))
 }
 
-#' Extract random effect variance for GRTS_Cell_ID
-check_re_variance <- function(fit) {
-  if (is.null(fit)) return(NA_real_)
-  tryCatch({
-    vc <- VarCorr(fit)$cond
-    if ("GRTS_Cell_ID" %in% names(vc)) {
-      round(as.numeric(vc[["GRTS_Cell_ID"]]), 4)
+# ---- Main function -----------------------------------------------------------
+
+run_diagnostics <- function(model_list, out_dir, coords_df = NULL) {
+  
+  dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+  models <- flatten_models(model_list)
+  message("Found ", length(models), " model(s)")
+  
+  summary_rows <- list(); cat_rows <- list(); vif_rows <- list()
+  
+  for (nm in names(models)) {
+    m <- models[[nm]]
+    message("\n== ", nm, " ==")
+    set.seed(seed)
+    
+    mf <- model.frame(m)   # rows used in the fit, incl. log(quad.nights) / log(transect.length)
+    
+    # ---- Grouping structure: detected per model ---------------------------------
+    has_cell <- cell_var %in% names(mf)
+    has_quad <- has_cell && quad_var %in% names(mf)     # TRUE = stationary (nested)
+    
+    cell_f <- if (has_cell) factor(mf[[cell_var]]) else NULL
+    cellquad_f <- if (has_quad) factor(paste(mf[[cell_var]], mf[[quad_var]], sep = "_")) else NULL
+    quads_per_cell <- if (has_quad) {
+      tapply(as.character(mf[[quad_var]]), cell_f, function(q) length(unique(q)))
+    } else NULL
+    
+    # Spatial unit: cell x quadrant for stationary, cell for transect
+    site_f <- if (has_quad) cellquad_f else cell_f
+    
+    message("    structure: ", if (has_quad) "cell / quadrant (nested)" else "cell only")
+    
+    pdf(file.path(out_dir, paste0("diagnostics_", make.names(nm), ".pdf")),
+        width = 11, height = 7)
+    
+    # ---- 1. Simulated residuals, main plots, uniformity, outliers -------------
+    res <- safe(simulateResiduals(m, n = n_sim, plot = FALSE), "simulateResiduals")
+    if (is.null(res)) {
+      dev.off()
+      summary_rows[[nm]] <- data.frame(model = nm, error = "simulateResiduals failed")
+      next
+    }
+    
+    plot(res, title = paste("DHARMa residuals:", nm))
+    uni <- safe(testUniformity(res, plot = FALSE), "uniformity")
+    out <- safe(testOutliers(res, plot = FALSE,
+                             type = if (nrow(mf) > 500) "binomial" else "bootstrap"),
+                "outliers")
+    
+    # Residuals vs every fixed-effect predictor (YearS, log effort term,
+    # species-specific covariates). Excludes the response and grouping factors.
+    fixed_cols <- setdiff(names(mf), c(response, cell_var, quad_var,
+                                       "(weights)", "(offset)"))
+    fixed_cols <- fixed_cols[!grepl("^offset\\(", fixed_cols)]
+    for (p in fixed_cols) {
+      x <- mf[[p]]
+      if (is.character(x)) x <- factor(x)
+      if (is.matrix(x)) next   # e.g. poly() terms; their source variable is plotted instead
+      safe(plotResiduals(res, form = x, xlab = p, main = paste("Residuals vs", p)),
+           paste("plotResiduals", p))
+    }
+    
+    # ---- 2. Dispersion ----------------------------------------------------------
+    disp <- safe(testDispersion(res, plot = TRUE), "dispersion")
+    
+    # ---- 3. Zero inflation ------------------------------------------------------
+    zi       <- safe(testZeroInflation(res, plot = TRUE), "zero-inflation")
+    obs_zero <- mean(mf[[response]] == 0, na.rm = TRUE)
+    
+    # ---- 4a. Temporal autocorrelation (aggregated by year) --------------------
+    temp <- NULL; n_years <- NA
+    if (year_var %in% names(mf)) {
+      yr      <- mf[[year_var]]
+      n_years <- length(unique(yr))
+      res_t   <- safe(recalculateResiduals(res, group = yr), "group by year")
+      if (!is.null(res_t)) {
+        temp <- safe(testTemporalAutocorrelation(res_t, time = sort(unique(yr)), plot = TRUE),
+                     "temporal autocorrelation")
+      }
     } else {
-      NA_real_
+      message("    ! '", year_var, "' not in model frame: temporal test skipped")
     }
-  }, error = function(e) NA_real_)
-}
-
-# -----------------------------------------------------------------------------
-# SECTION 2: Overall reliability flag
-#
-# Underdispersion with high RE variance (>= 0.5) is treated as a likely
-# DHARMa/RE artefact. The KS test becomes the primary distributional fit
-# check in that scenario.
-#
-# Overdispersion (stat > 1) is treated as a genuine fit concern and
-# escalates the flag accordingly.
-# -----------------------------------------------------------------------------
-
-assign_overall_flag <- function(conv_pass, n_grts, n_obs,
-                                disp_flag, disp_dir, ks_flag, zi_flag,
-                                se_ratio, re_var) {
-  
-  # === HARD DISQUALIFIERS ===
-  if (!conv_pass)                                            return("Do Not Report")
-  #if (!is.na(n_grts) && n_grts < 10)                        return("Do Not Report") #keep for BC full models but remove for regional models
-  if (!is.na(n_obs)  && n_obs  < 150)                        return("Do Not Report")
-  # Only severe *over*dispersion disqualifies — underdispersion handled below
-  if (grepl("Severe overdispersion", disp_flag))             return("Do Not Report")
-  # YearS estimate completely swamped by uncertainty
-  if (!is.na(se_ratio) && se_ratio > 3)                      return("Do Not Report")
-  
-  # === INTERPRET DIRECTION ONLY ===
-  direction_only <- FALSE
-  
-  # Genuine overdispersion at moderate level: magnitude unreliable
-  if (grepl("Moderate overdispersion", disp_flag))           direction_only <- TRUE
-  
-  # Underdispersion + poor KS: likely true distributional misfit,
-  # not just a DHARMa/RE artefact
-  if (!is.na(disp_dir) && disp_dir == "under" &&
-      grepl("poor", ks_flag))                                direction_only <- TRUE
-  
-  # Poor KS on its own (distributional family a poor fit)
-  if (grepl("Distributional fit poor", ks_flag))             direction_only <- TRUE
-  
-  # Zero-inflation biases counts toward zero, affecting magnitude
-  if (grepl("Zero-inflation", zi_flag))                      direction_only <- TRUE
-  
-  # Wide but non-extreme SE: direction visible, CI too wide for magnitude
-  if (!is.na(se_ratio) && se_ratio > 1 && se_ratio <= 3)    direction_only <- TRUE
-  
-  if (direction_only)                                        return("Interpret Direction Only")
-  
-  # === REPORT WITH CAVEATS ===
-  caution <- FALSE
-  if (!is.na(n_grts) && n_grts < 25)                        caution <- TRUE
-  if (!is.na(n_obs)  && n_obs  < 100)                       caution <- TRUE
-  # Mild overdispersion: note in methods
-  if (grepl("Mild overdispersion", disp_flag))               caution <- TRUE
-  # Underdispersion with clean KS: likely artefact, worth noting
-  if (!is.na(disp_dir) && disp_dir == "under" &&
-      grepl("OK", ks_flag))                                  caution <- TRUE
-  # Marginal KS: distributional fit slightly off but not disqualifying
-  if (grepl("marginal", ks_flag))                            caution <- TRUE
-  if (!is.na(re_var) && re_var < 0.001)                      caution <- TRUE
-  
-  if (caution)                                               return("Report with Caveats")
-  
-  return("Report")
-}
-
-# -----------------------------------------------------------------------------
-# SECTION 3: Main diagnostic loop
-# -----------------------------------------------------------------------------
-
-run_model_diagnostics <- function(fit_list, n_sim = 500) {
-  
-  cat("Running model diagnostics for", length(fit_list), "species...\n")
-  cat("DHARMa simulations:", n_sim, "per model\n")
-  cat("Mode: TREND-FOCUSED v3 (underdispersion/overdispersion treated separately)\n\n")
-  
-  results <- lapply(names(fit_list), function(sp) {
     
-    cat("---", sp, "---\n")
-    fit <- fit_list[[sp]]
-    
-    # 1. Convergence
-    conv   <- check_convergence(fit)
-    cat("  Convergence:", conv$message, "\n")
-    
-    # 2. Sample sizes
-    n_grts <- count_grts_cells(fit)
-    n_obs  <- count_obs(fit)
-    re_var <- check_re_variance(fit)
-    cat("  GRTS cells:", n_grts, "| Observations:", n_obs,
-        "| RE variance:", re_var, "\n")
-    
-    # 3. YearS effect
-    ye <- check_years_effect(fit)
-    cat("  YearS estimate:", ye$estimate, "| SE:", ye$se,
-        "| SE ratio:", ye$se_ratio, "| p:", ye$p_value, "\n")
-    
-    # 4. DHARMa
-    if (conv$pass) {
-      dh <- check_dharma(fit, n_sim = n_sim)
-    } else {
-      dh <- list(
-        dispersion_stat = NA, dispersion_p = NA,
-        dispersion_flag = "Skipped (convergence failure)",
-        dispersion_dir  = NA,
-        ks_stat = NA, ks_p = NA,
-        ks_flag = "Skipped (convergence failure)",
-        zeroinfl_stat = NA, zeroinfl_p = NA,
-        zeroinfl_flag = "Skipped (convergence failure)"
-      )
-    }
-    cat("  Dispersion:", dh$dispersion_flag,
-        "(stat =", dh$dispersion_stat, ", p =", dh$dispersion_p, ")\n")
-    cat("  KS uniformity:", dh$ks_flag,
-        "(stat =", dh$ks_stat, ", p =", dh$ks_p, ")\n")
-    cat("  Zero-inflation:", dh$zeroinfl_flag,
-        "(stat =", dh$zeroinfl_stat, ", p =", dh$zeroinfl_p, ")\n")
-    
-    # 5. Overall flag
-    overall <- assign_overall_flag(
-      conv_pass = conv$pass,
-      n_grts    = n_grts,
-      n_obs     = n_obs,
-      disp_flag = dh$dispersion_flag,
-      disp_dir  = dh$dispersion_dir,
-      ks_flag   = dh$ks_flag,
-      zi_flag   = dh$zeroinfl_flag,
-      se_ratio  = ye$se_ratio,
-      re_var    = re_var
-    )
-    cat("  >> Overall:", overall, "\n\n")
-    
-    tibble(
-      Species              = sp,
-      Convergence          = conv$message,
-      N_GRTS_cells         = n_grts,
-      N_observations       = n_obs,
-      RE_variance_GRTS     = re_var,
-      YearS_estimate       = ye$estimate,
-      YearS_SE             = ye$se,
-      YearS_CI_lo          = ye$ci_lo,
-      YearS_CI_hi          = ye$ci_hi,
-      YearS_p              = ye$p_value,
-      SE_ratio             = ye$se_ratio,
-      Dispersion_stat      = dh$dispersion_stat,
-      Dispersion_p         = dh$dispersion_p,
-      Dispersion_direction = dh$dispersion_dir,
-      Dispersion_flag      = dh$dispersion_flag,
-      KS_stat              = dh$ks_stat,
-      KS_p                 = dh$ks_p,
-      KS_flag              = dh$ks_flag,
-      ZeroInflation_stat   = dh$zeroinfl_stat,
-      ZeroInflation_p      = dh$zeroinfl_p,
-      ZeroInflation_flag   = dh$zeroinfl_flag,
-      Overall_flag         = overall
-    )
-  })
-  
-  bind_rows(results)
-}
-
-# -----------------------------------------------------------------------------
-# SECTION 4: Run diagnostics and save outputs
-# -----------------------------------------------------------------------------
-
-diag_table <- run_model_diagnostics(best_fits, n_sim = 500)
-
-# Print summary
-cat("\n=== SUMMARY TABLE ===\n")
-print(
-  diag_table %>%
-    select(Species, N_GRTS_cells, N_observations,
-           YearS_estimate, YearS_SE, YearS_p, SE_ratio,
-           Dispersion_flag, Dispersion_direction,
-           KS_flag, ZeroInflation_flag,
-           Overall_flag) %>%
-    as.data.frame(),
-  row.names = FALSE
-)
-
-# Flag counts
-cat("\n=== FLAG COUNTS ===\n")
-print(table(diag_table$Overall_flag))
-
-# Legend
-cat("\n=== FLAG LEGEND ===\n")
-cat("Report                   : All diagnostics pass.\n")
-cat("Report with Caveats      : Minor issues (sample size, mild overdispersion,\n")
-cat("                           or underdispersion with clean KS). Note in methods.\n")
-cat("Interpret Direction Only : Moderate fit problems or wide SE ratio.\n")
-cat("                           Report trend direction and significance only;\n")
-cat("                           do not emphasise exact magnitude of estimate.\n")
-cat("Do Not Report            : Convergence failure, severe overdispersion,\n")
-cat("                           insufficient data, or YearS completely unreliable.\n")
-cat("\nNote on underdispersion: stat << 1 with high RE variance is commonly a\n")
-cat("DHARMa/RE interaction artefact. KS uniformity test is used as the primary\n")
-cat("distributional fit check in this scenario.\n")
-
-# Save
-write.csv(diag_table, "Data/Analyzed/ActivityTrends/model_diagnostics_full.csv", row.names = FALSE)
-cat("\nFull diagnostics saved to: model_diagnostics_full.csv\n")
-
-# -----------------------------------------------------------------------------
-# SECTION 5: DHARMa plots for flagged models
-# -----------------------------------------------------------------------------
-
-flagged_species <- diag_table %>%
-  filter(Overall_flag != "Report") %>%
-  pull(Species)
-
-if (length(flagged_species) > 0) {
-  cat("\nGenerating DHARMa residual plots for flagged species:",
-      paste(flagged_species, collapse = ", "), "\n")
-  
-  pdf("model_diagnostics_flagged_plots.pdf", width = 10, height = 6)
-  for (sp in flagged_species) {
-    fit <- bc.fits.cov.singlet[[sp]]
-    if (!is.null(fit)) {
-      tryCatch({
-        set.seed(42)
-        sim_res <- simulateResiduals(fit, n = 500, plot = FALSE)
-        par(mfrow = c(1, 2))
-        plot(sim_res)
-        flag <- diag_table %>% filter(Species == sp) %>% pull(Overall_flag)
-        mtext(paste0(sp, "  [", flag, "]"),
-              side = 3, line = -1.5, outer = TRUE, cex = 1.1, font = 2)
-      }, error = function(e) {
-        cat("  Could not plot", sp, ":", conditionMessage(e), "\n")
-      })
-    }
-  }
-  dev.off()
-  cat("Plots saved to: model_diagnostics_flagged_plots.pdf\n")
-}  
-  
-  #--------------------------------------------CHECK REGIONAL MODELS-----------------------------------------------------------#
-# -----------------------------------------------------------------------------
-# SECTION 3: Main diagnostic loop (updated for nested region → species list)
-# -----------------------------------------------------------------------------
-
-run_model_diagnostics <- function(fit_list_nested, n_sim = 500) {
-  
-  cat("Running model diagnostics across", length(fit_list_nested), "regions...\n")
-  cat("DHARMa simulations:", n_sim, "per model\n")
-  cat("Mode: TREND-FOCUSED v3 (underdispersion/overdispersion treated separately)\n\n")
-  
-  results <- lapply(names(fit_list_nested), function(region) {
-    
-    cat("\n========== REGION:", region, "==========\n")
-    fit_list <- fit_list_nested[[region]]
-    
-    region_results <- lapply(names(fit_list), function(sp) {
-      
-      cat("---", sp, "---\n")
-      fit <- fit_list[[sp]]
-      
-      # 1. Convergence
-      conv   <- check_convergence(fit)
-      cat("  Convergence:", conv$message, "\n")
-      
-      # 2. Sample sizes
-      n_grts <- count_grts_cells(fit)
-      n_obs  <- count_obs(fit)
-      re_var <- check_re_variance(fit)
-      cat("  GRTS cells:", n_grts, "| Observations:", n_obs,
-          "| RE variance:", re_var, "\n")
-      
-      # 3. YearS effect
-      ye <- check_years_effect(fit)
-      cat("  YearS estimate:", ye$estimate, "| SE:", ye$se,
-          "| SE ratio:", ye$se_ratio, "| p:", ye$p_value, "\n")
-      
-      # 4. DHARMa
-      if (conv$pass) {
-        dh <- check_dharma(fit, n_sim = n_sim)
+    # ---- 4b. Spatial autocorrelation (by cell x quadrant, or by cell) ---------
+    spat <- NULL
+    if (!is.null(coords_df) && !is.null(site_f)) {
+      cd <- as.data.frame(coords_df)
+      if (has_quad) {
+        ck <- paste(cd[[cell_var]], cd[[quad_var]], sep = "_")
       } else {
-        dh <- list(
-          dispersion_stat = NA, dispersion_p = NA,
-          dispersion_flag = "Skipped (convergence failure)",
-          dispersion_dir  = NA,
-          ks_stat = NA, ks_p = NA,
-          ks_flag = "Skipped (convergence failure)",
-          zeroinfl_stat = NA, zeroinfl_p = NA,
-          zeroinfl_flag = "Skipped (convergence failure)"
+        # one point per cell (averages quadrant coordinates if present)
+        cd <- aggregate(cd[c(lon_var, lat_var)], by = list(cell = cd[[cell_var]]), FUN = mean)
+        ck <- as.character(cd$cell)
+      }
+      res_s <- safe(recalculateResiduals(res, group = site_f), "group by site")
+      if (!is.null(res_s)) {
+        xy <- cd[match(levels(site_f), ck), c(lon_var, lat_var)]
+        if (anyNA(xy)) {
+          message("    ! ", sum(!complete.cases(xy)),
+                  " site(s) without coordinates: spatial test skipped")
+        } else {
+          dup <- duplicated(xy)
+          if (any(dup)) xy[[lon_var]][dup] <- xy[[lon_var]][dup] + runif(sum(dup), -1e-5, 1e-5)
+          spat <- safe(testSpatialAutocorrelation(res_s, x = xy[[lon_var]], y = xy[[lat_var]],
+                                                  plot = TRUE),
+                       "spatial autocorrelation")
+        }
+      }
+    } else if (is.null(coords_df)) {
+      message("    - no coordinates supplied: spatial test skipped")
+    }
+    
+    # ---- 5. Random effects --------------------------------------------------------
+    grp_list <- list()
+    if (has_cell) grp_list$cell <- cell_f
+    if (has_quad) grp_list$cell_quadrant <- cellquad_f
+    for (g in names(grp_list)) {
+      grp <- grp_list[[g]]
+      ct  <- safe(testCategorical(res, catPred = grp, plot = TRUE), paste("categorical", g))
+      if (!is.null(ct)) {
+        cat_rows[[paste(nm, g)]] <- data.frame(
+          model = nm, group = g, n_levels = nlevels(grp),
+          n_levels_nonuniform_p05 = sum(ct$uniformity$p.value < 0.05, na.rm = TRUE),
+          levene_F = unname(ct$homogeneity$`F value`[1]),
+          levene_p = unname(ct$homogeneity$`Pr(>F)`[1])
         )
       }
-      cat("  Dispersion:", dh$dispersion_flag,
-          "(stat =", dh$dispersion_stat, ", p =", dh$dispersion_p, ")\n")
-      cat("  KS uniformity:", dh$ks_flag,
-          "(stat =", dh$ks_stat, ", p =", dh$ks_p, ")\n")
-      cat("  Zero-inflation:", dh$zeroinfl_flag,
-          "(stat =", dh$zeroinfl_stat, ", p =", dh$zeroinfl_p, ")\n")
-      
-      # 5. Overall flag
-      overall <- assign_overall_flag(
-        conv_pass = conv$pass,
-        n_grts    = n_grts,
-        n_obs     = n_obs,
-        disp_flag = dh$dispersion_flag,
-        disp_dir  = dh$dispersion_dir,
-        ks_flag   = dh$ks_flag,
-        zi_flag   = dh$zeroinfl_flag,
-        se_ratio  = ye$se_ratio,
-        re_var    = re_var
-      )
-      cat("  >> Overall:", overall, "\n\n")
-      
-      tibble(
-        Region               = region,
-        Species              = sp,
-        Convergence          = conv$message,
-        N_GRTS_cells         = n_grts,
-        N_observations       = n_obs,
-        RE_variance_GRTS     = re_var,
-        YearS_estimate       = ye$estimate,
-        YearS_SE             = ye$se,
-        YearS_CI_lo          = ye$ci_lo,
-        YearS_CI_hi          = ye$ci_hi,
-        YearS_p              = ye$p_value,
-        SE_ratio             = ye$se_ratio,
-        Dispersion_stat      = dh$dispersion_stat,
-        Dispersion_p         = dh$dispersion_p,
-        Dispersion_direction = dh$dispersion_dir,
-        Dispersion_flag      = dh$dispersion_flag,
-        KS_stat              = dh$ks_stat,
-        KS_p                 = dh$ks_p,
-        KS_flag              = dh$ks_flag,
-        ZeroInflation_stat   = dh$zeroinfl_stat,
-        ZeroInflation_p      = dh$zeroinfl_p,
-        ZeroInflation_flag   = dh$zeroinfl_flag,
-        Overall_flag         = overall
-      )
-    })
+    }
     
-    bind_rows(region_results)
-  })
+    # QQ plots of the random intercepts ("GRTS_Cell_ID" and, for stationary
+    # models, "Quadrant:GRTS_Cell_ID")
+    re <- safe({ r <- lme4::ranef(m); if (inherits(m, "glmmTMB")) r$cond else r }, "ranef")
+    re_sd <- c(cell = NA, cell_quadrant = NA)
+    if (!is.null(re)) {
+      for (g in names(re)) {
+        v     <- re[[g]][["(Intercept)"]]
+        label <- if (grepl(":", g)) "cell_quadrant" else if (g == cell_var) "cell" else g
+        re_sd[label] <- sd(v)
+        qqnorm(v, main = paste0("Random intercept QQ: ", g, " (", length(v), " levels)"))
+        qqline(v, col = "red")
+      }
+    }
+    
+    # ---- 6. R2, singularity, collinearity ---------------------------------------
+    # r2_nakagawa() returns a plain NA (with a warning) instead of a list when it
+    # can't compute R2, e.g. when a random-effect variance is ~0
+    r2  <- safe(r2_nakagawa(m), "r2_nakagawa")
+    if (!is.list(r2)) {
+      if (!is.null(r2)) message("    ! r2_nakagawa returned NA (often a near-zero random-effect variance)")
+      r2 <- NULL
+    }
+    sng <- safe(check_singularity(m), "singularity")
+    vif <- safe(check_collinearity(m), "collinearity")
+    # check_collinearity() returns an empty table (0 rows) when there are fewer
+    # than two fixed-effect terms to compare
+    if (!is.data.frame(vif) || !"VIF" %in% names(vif) || nrow(vif) == 0) {
+      if (!is.null(vif)) message("    - collinearity: fewer than 2 fixed-effect terms, VIF not computed")
+      vif <- NULL
+    }
+    if (!is.null(vif)) vif_rows[[nm]] <- data.frame(model = nm, as.data.frame(vif))
+    
+    dev.off()
+    
+    # ---- Collect results -----------------------------------------------------------
+    summary_rows[[nm]] <- data.frame(
+      model               = nm,
+      structure           = if (has_quad) "cell/quadrant" else "cell",
+      n_obs               = nrow(mf),
+      n_years             = n_years,
+      n_cells             = if (has_cell) nlevels(cell_f) else NA,
+      n_cell_quadrants    = if (has_quad) nlevels(cellquad_f) else NA,
+      cells_with_1_quad   = if (has_quad) sum(quads_per_cell == 1) else NA,
+      ht(uni,  "uniformity_KS"),
+      outliers_n          = sum(outliers(res)),
+      outliers_p          = if (!is.null(out)) out$p.value else NA,
+      ht(disp, "dispersion"),
+      ht(zi,   "zeroinfl_ratio"),
+      observed_zero_prop  = obs_zero,
+      ht(temp, "temporal_DW"),
+      ht(spat, "spatial_MoranI"),
+      RE_sd_cell          = unname(re_sd["cell"]),
+      RE_sd_cell_quadrant = unname(re_sd["cell_quadrant"]),
+      R2_marginal         = if (!is.null(r2)) unname(r2$R2_marginal)    else NA,
+      R2_conditional      = if (!is.null(r2)) unname(r2$R2_conditional) else NA,
+      singular            = if (!is.null(sng)) sng else NA,
+      max_VIF             = if (!is.null(vif)) max(vif$VIF, na.rm = TRUE) else NA,
+      error               = NA_character_,
+      check.names = FALSE
+    )
+    message("    done")
+  }
   
-  bind_rows(results)
+  # ---- Write tables ----------------------------------------------------------------
+  diag_summary <- bind(summary_rows); rownames(diag_summary) <- NULL
+  cat_summary  <- bind(cat_rows)
+  vif_summary  <- bind(vif_rows)
+  
+  write.csv(diag_summary, file.path(out_dir, "diagnostics_summary.csv"), row.names = FALSE)
+  if (!is.null(cat_summary)) write.csv(cat_summary, file.path(out_dir, "categorical_tests.csv"), row.names = FALSE)
+  if (!is.null(vif_summary)) write.csv(vif_summary, file.path(out_dir, "collinearity.csv"),     row.names = FALSE)
+  
+  print(diag_summary, digits = 3)
+  message("\nAll outputs written to: ", normalizePath(out_dir))
+  invisible(diag_summary)
 }
 
-# -----------------------------------------------------------------------------
-# SECTION 4: Run diagnostics and save outputs
-# -----------------------------------------------------------------------------
+# ---- RUN ---------------------------------------------------------------------
+# Replace the model list names with your own objects.
 
-diag_table <- run_model_diagnostics(all.region.fits, n_sim = 500)
-
-# Print summary
-cat("\n=== SUMMARY TABLE ===\n")
-print(
-  diag_table %>%
-    select(Region, Species, N_GRTS_cells, N_observations,
-           YearS_estimate, YearS_SE, YearS_p, SE_ratio,
-           Dispersion_flag, Dispersion_direction,
-           KS_flag, ZeroInflation_flag,
-           Overall_flag) %>%
-    as.data.frame(),
-  row.names = FALSE
+diag_stationary <- run_diagnostics(
+  all.region.fits,
+  out_dir   = "Data/Analyzed/ActivityTrends/model_diagnostics/ProvRegional",
+  coords_df = coords_stationary
 )
 
-# Flag counts (overall and by region)
-cat("\n=== FLAG COUNTS (OVERALL) ===\n")
-print(table(diag_table$Overall_flag))
-
-cat("\n=== FLAG COUNTS BY REGION ===\n")
-print(table(diag_table$Region, diag_table$Overall_flag))
-
-# Legend
-cat("\n=== FLAG LEGEND ===\n")
-cat("Report                   : All diagnostics pass.\n")
-cat("Report with Caveats      : Minor issues (sample size, mild overdispersion,\n")
-cat("                           or underdispersion with clean KS). Note in methods.\n")
-cat("Interpret Direction Only : Moderate fit problems or wide SE ratio.\n")
-cat("                           Report trend direction and significance only;\n")
-cat("                           do not emphasise exact magnitude of estimate.\n")
-cat("Do Not Report            : Convergence failure, severe overdispersion,\n")
-cat("                           insufficient data, or YearS completely unreliable.\n")
-
-# Save
-write.csv(diag_table, "Data/Analyzed/ActivityTrends/reg_model_diagnostics_full.csv", row.names = FALSE)
-cat("\nFull diagnostics saved to: model_diagnostics_full.csv\n")
-
-# -----------------------------------------------------------------------------
-# SECTION 5: DHARMa plots for flagged models
-# -----------------------------------------------------------------------------
-
-flagged_models <- diag_table %>%
-  filter(Overall_flag != "Report") %>%
-  select(Region, Species, Overall_flag)
-
-if (nrow(flagged_models) > 0) {
-  cat("\nGenerating DHARMa residual plots for", nrow(flagged_models), "flagged models...\n")
-  
-  pdf("model_diagnostics_regional_flagged_plots.pdf", width = 10, height = 6)
-  for (i in seq_len(nrow(flagged_models))) {
-    region <- flagged_models$Region[i]
-    sp     <- flagged_models$Species[i]
-    flag   <- flagged_models$Overall_flag[i]
-    
-    fit <- all.region.fits[[region]][[sp]]
-    if (!is.null(fit)) {
-      tryCatch({
-        set.seed(42)
-        sim_res <- simulateResiduals(fit, n = 500, plot = FALSE)
-        par(mfrow = c(1, 2))
-        plot(sim_res)
-        mtext(paste0(sp, " | ", region, "  [", flag, "]"),
-              side = 3, line = -1.5, outer = TRUE, cex = 1.1, font = 2)
-      }, error = function(e) {
-        cat("  Could not plot", sp, "in", region, ":", conditionMessage(e), "\n")
-      })
-    }
-  }
-  dev.off()
-  cat("Plots saved to: model_diagnostics_regional_flagged_plots.pdf\n")
-}  
-
-#Get the cleaned version (removing any model results that are sus) of the model outputs for report
-do_not_report <- diag_table %>%
-  filter(Overall_flag == "Do Not Report") %>%
-  select(Region, Species)
-
-# Filter the summary table
-all.region.slope.summary.singlet.filtered <- all.region.slope.summary.singlet %>%
-  anti_join(do_not_report, by = c("Region" = "Region", "SpeciesGroup" = "Species"))
-
-write.csv(all.region.slope.summary.singlet.filtered,"Data/Analyzed/region.slope.summary.singlet.csv")
+diag_transect <- run_diagnostics(
+  transect_fits,                                   # <- your transect model list
+  out_dir   = "Data/Analyzed/ActivityTrends/model_diagnostics/Transect",
+  coords_df = coords_transect
+)
