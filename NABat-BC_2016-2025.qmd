@@ -1121,7 +1121,15 @@ Models were fit in a Bayesian framework using JAGS (Version 4.3.2) via the jagsU
 
 ## Species Detection
 
-All species previously documented in BC were detected in 2025. Total acoustic activity varied substantially among grid cells and regions (@fig-map).
+All 15 species monitored by the program were detected in 2025. Total acoustic activity varied substantially among grid cells and regions (@fig-map). Little brown myotis and silver-haired bat remain two of the most widespread species in the province. Notable changes in 2025 include:
+
+- **Pallid bat** was detected at only one site, in each of 2023 and 2024. In 2025 it was detected at 14 sites across 6 grid cells, its highest site count since monitoring began and slightly above 2022 (13 sites across 6 grid cells). Pallid bat was first recorded in the Kootenay Region in 2022 and was not detected there in 2023 or 2024. In 2025 it was detected at 8 Kootenay sites across 4 grid cells. Two of these grid cells (111466 and 243562) had no previous detections.
+
+- **Eastern red bat** was detected at 35 sites across 17 grid cells in 2025. That is its highest site count to date, although it was found in more grid cells in 2022 (21). Four grid cells had no previous detections: 111466 and 243562 (Kootenay), 194666 (Okanagan) and 186330 (Northern). Eastern red bat was not detected in the South Coastal Region in 2025 after being recorded there each year from 2021 to 2024.
+
+- **Northern myotis** was detected at 15 sites across 10 grid cells in 2025. In the southern Kootenay Region it was detected for the first time at 4 sites across 3 grid cells (20330, 89962 and 218282), near the southern edge of its range.
+
+- **Long-legged myotis** was detected at 76 sites across 39 grid cells in 2025, down from 92 sites across 45 grid cells in 2023 (the highest year of detection for the species). Most of these losses were in the Okanagan Region (8 sites, 5 grid cells) and the South Coastal Region (5 sites, 2 grid cells). The remaining losses were in the Kootenay and Northern regions (3 sites and 1 grid cell each).
 
 @fig-map is an interactive map. Readers can zoom in to see the individual stationary monitoring sites (blue circles), and click a site to open a pop-up with a summary pie chart of total detections by species and year. Readers can also search for specific grid cells using the ![](images/clipboard-4082158342.png){width="26" height="27"} icon.
 
@@ -1197,7 +1205,7 @@ We estimated yearly trends in nightly acoustic activity for `r sum(merged_table$
 
 - Yuma Myotis (`r merged_table$stationary_trend[merged_table$Species == "Yuma Myotis"]`).
 
-The remaining 7 species had non-significant trend estimates for stationary acoustics. Transect models yielded results for fewer species, with significant positive result only for the little brown Myotis (`r merged_table$transect_trend [merged_table$Species == "Little Brown Myotis"]`).
+The remaining 7 species had non-significant trend estimates for stationary acoustics. Transect models yielded results for fewer species, with significant positive result for the little brown Myotis (`r merged_table$transect_trend [merged_table$Species == "Little Brown Myotis"]`) and the long-legged Myotis (`r merged_table$transect_trend [merged_table$Species == "Long-legged Myotis"]`)
 
 ```{r}
 #| echo: false
@@ -1315,13 +1323,29 @@ if (is_html) {
 
 ## Dynamic Occupancy Models
 
-Occupancy increased across British Columbia between 2017 and 2025 for 4 of the 15 species modelled (@fig-sppocc). Need to clarify EPFU. Highlight MYEV, MYLU, MYSE and LANO seem to be consistenly increasing, while MYTH is decreasing
+We assessed occupancy trends in two ways: the mean yearly change in occupancy across 2017–2025, and the posterior probability that occupancy in 2025 was higher than in 2017. We considered a posterior probability above 0.95 to be strong evidence of an increase, and one below 0.05 to be strong evidence of a decline.
+
+Overall, occupancy increased across British Columbia between 2017 and 2025 for four of the 15 species modelled (@fig-sppocc). Western long-eared Myotis, little brown Myotis, northern Myotis and silver-haired bat all showed a positive mean yearly trend and a high posterior probability of an increase in occupancy from 2017 to 2025, indicating strong evidence of an overall increase. Fringed Myotis was the only species with a consistent decrease in occupancy: its mean yearly change was negative, and the posterior probability that 2025 occupancy exceeded 2017 occupancy was very low, indicating strong evidence of a decline.
+
+Yuma Myotis, western small-footed Myotis, spotted bat, pallid bat and hoary bat showed no detectable occupancy trend. Their mean yearly change was not significant, and the posterior probability of an increase from 2017 to 2025 gave no clear evidence of either an increase or a decline.
+
+Big brown bat showed no significant mean yearly change, but the posterior probability of an increase between 2017 and 2025 was low, which points to a decline over that period. This was driven by a high posterior mean occupancy in the first year and a slightly below-average posterior mean in the last year ([Appendix A: Big brown bat]), so it more likely reflects a stable population with an unusually high starting point than a true decline.
+
+Eastern red bat, long-legged Myotis, Townsend’s big-eared bat and California Myotis had positive mean yearly trends. However, the posterior probability that occupancy was higher in 2025 than in 2017 was not high enough to conclude that occupancy increased overall. This pattern reflects nonlinear change across years (see species specific results in [Appendix A]). Occupancy fluctuated enough to produce a positive mean yearly trend, but the net difference between the first and last years was small, suggesting these species remained relatively stable over the monitoring period.
 
 ![Estimated occupancy trends for 15 bat species in British Columbia (2017--2025) fit across all monitoring sites. Points and bars show the posterior mean and 95% credible interval of the linear change in occupancy per year. The dashed line marks zero, where there is no change in mean yearly opccupancy. Colour shows the posterior probability (at ≥ 0.95) that the occupancy in 2025 was higher (green) or lower (red) than in 2017 . Grey means the probability is uncertain. Slope and colour can disagree when trends are non-linear.](Figures/DOccupancy/figB_bc_trends_all_species.png){#fig-sppocc}
 
-Regionally the Kootnay region seems to be great fro increasing bat (@fig-regocc). Northern is where we see decrease in EPFU and potentially LABO. LACI decreasing in South Coastal. MYTH and MYYU decrease in Okanagan.
+Among the regional models, the Kootenay Region showed the most positive trends ( @fig-regocc). Eastern red bat, silver-haired bat, western small-footed Myotis, western long-eared Myotis, little brown Myotis and long-legged Myotis all had a positive mean yearly trend and a high posterior probability of an increase in occupancy from 2017 to 2025.
+
+In the Northern Region, big brown bat had a negative mean yearly trend and a low posterior probability of an increase, indicating a decline. Eastern red bat also had a low posterior probability of an increase, although its mean yearly change was not significant.
+
+In the Okanagan Region, Townsend’s big-eared bat and eastern red bat had positive mean yearly trends and high posterior probabilities of an increase. Fringed Myotis declined, with both a negative mean yearly trend and a low posterior probability of an increase. Yuma Myotis also had a low posterior probability of an increase, although its mean yearly change was not significant.
+
+In the South Coastal Region, hoary bat had a negative mean yearly trend and a low posterior probability of an increase. Silver-haired bat, California Myotis, western long-eared Myotis and Yuma Myotis had positive mean yearly trends and high posterior probabilities of an increase.
 
 ![Regional estimated occupancy trends for 15 bat species in British Columbia (2017--2025). Points and bars show the posterior mean and 95% credible interval of the linear change in occupancy per year. The dashed line marks zero, where there is no change in mean yearly occupancy. Colour shows the posterior probability (at ≥ 0.95) that the occupancy in 2025 was higher (green) or lower (red) than in 2017 . Grey means the probability is uncertain. Slope and colour can disagree when trends are non-linear.](Figures/DOccupancy/figC_regional_trends_all_species.png){#fig-regocc}
+
+To show how occupancy varied across space and time, we mapped the model-estimated probability of occupancy at each site for every year from 2017 to 2025 (@fig-occ-slider). The map lets readers select a species and move through the years to see where occupancy has changed. Each point’s colour shows the model’s estimate of for yearly probability of occupancy, while its shape shows whether the species was detected that year (circle) or not (triangle). Because the occupancy model accounts for imperfect detection, a site where a species was not detected can still have a high estimated probability of occupancy. This is especially likely for species that are hard to detect acoustically, or at sites with few survey nights in a given year. The map therefore shows where a species was likely present, not just where it was recorded.
 
 ```{r}
 #| label: fig-occ-slider
@@ -1354,13 +1378,19 @@ if (knitr::pandoc_to("html")) {
 }
 ```
 
-Dynamic occupancy also allows us to see the difference in detection probability across the years for each species. in 2024-2025 there is an uptick across most species ([Appendix A]). In 2024 we changed our manual vetting to only manually verify 50% of all recordings, whih shouldn't have messed it up because of how we set it up (refer above).
+Because the dynamic occupancy model estimates detection probability separately for each year, it also shows how detectability changed over the monitoring period for each species. This lets us account for changes in sampling and processing, such as the equipment change in 2025, so that shifts in detectability are not mistaken for changes in occupancy. The species-specific results ([Appendix A]) show that the probability of detecting pallid bat and eastern red bat increased in 2025, whereas detection probability for all other species stayed within its normal year-to-year variation.
 
 # Discussion
 
 ## Species Presence
 
 Species ranges across the project period (2016--2025) continue to appear broadly stable, with no grid cells showing conspicuous or sustained absences for previously detected species.
+
+- Northern Myotis was detected for the first time in 3 grids (20330, 218282 and 89962) in the southern Kootney region, this is a bit part the southern edge of their range. This at the southern edge of their range, and might be suggesting a small range expansion. Continued monitoring specifically looking for this species with acoustics
+
+- **Long-legged myotis** was detected at fewer sites in 2025: 76 sites across 39 grid cells, down from 92 sites across 45 grid cells in 2023. It was not detected at 19 sites where it was recorded in 2023, and it was absent from every site in 9 grid cells where it had been present that year. Most of these losses were in the Okanagan Region (8 sites, 5 grid cells) and the South Coastal Region (5 sites, 2 grid cells). The remaining losses were in the Kootenay and Northern regions (3 sites and 1 grid cell each). This decline likely reflects natural year-to-year variation rather than a population change. In 2025, the species was detected at 59% of surveyed sites, which is within the range recorded in 2017–2020 (51–61%), and 2023 was the program’s highest year for this species (80%). Year-to-year turnover in detections at individual sites is also common for most species in the program. However, the proportion of sites with detections has now declined for two consecutive years, so this species should be watched in future surveys.
+
+- **Eastern red bat** detections increased in the Kootenay and Okanagan regions in 2025, and it was detected in 17 grid cells, its highest number to date. Four of these cells had no previous detections (111466, 243562, 194666, and186330). Eastern red bat was not detected in the South Coastal Region in 2025 after being recorded there each year from 2021 to 2024. Detections there have always been sparse (1 to 6 sites a year), and year-to-year variation of this size is common, so this is not currently a cause for concern.
 
 ## Trend analyses
 

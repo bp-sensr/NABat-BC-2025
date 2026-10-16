@@ -17,6 +17,12 @@ library(interactions)
 #Need to run the TrendDataSetUp.R code first with the raw data frame. 
 #That code will do data checks, and will give you the data frame that can be used to run this code
 
+#Identify which species should be excluded from the analysis due to low sample numbers.
+#excluded species in stationary
+SpeciesExclude = c('PAHE')
+#excluded species in transects
+SpeciesExcludeTrans = c('PAHE')
+
 ##Model Selection for stationary models in report
 # ── 1.  Define candidate variable sets per species ──────────────────────────
 # Each species gets a named list of candidate formulas.

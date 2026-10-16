@@ -106,11 +106,12 @@ mean(is.na(bat.data$moon_fraction_above_horizon))
 bat.data$moon <- bat.data$moon_illumination*bat.data$moon_fraction_above_horizon
 
 
-bat.data.species <- c("ANPA", "COTO", "EPFU", "EUMA", "LABO", "LACI", "LANO", "MYCA", 
-                "MYCI", "MYEV", "MYLU", "MYTH", "MYVO", "MYSE", "MYYU") #, "PAHE", "TABR")
 
 
 #----------Now that you've checked to make sure all the data looks good set it up so it's ready for running models----------------------------------
+
+bat.data.species <- c("ANPA", "COTO", "EPFU", "EUMA", "LABO", "LACI", "LANO", "MYCA", 
+                      "MYCI", "MYEV", "MYLU", "MYTH", "MYVO", "MYSE", "MYYU") #, "PAHE", "TABR")
 
 #separate transect from stationary data
 bat.data <- bat.data[ bat.data$Quadrant != "Transects",]
@@ -145,12 +146,6 @@ bat.transect.data.long <- plyr::ldply(species.id, function(species, bat.transect
   bat.transect.data$SpeciesPartPool <- apply(bat.transect.data2[, SpeciesGroupCountVars],1,sum,na.rm=TRUE)
   bat.transect.data
 }, bat.transect.data=bat.transect.data)
-
-#Identify which species should be excluded from the analysis due to low sample numbers. This list was established by WCSC. 
-#excluded species in stationary
-SpeciesExclude = c('PAHE')
-#excluded species in transects
-SpeciesExcludeTrans = c('ANPA','COTO','EUMA','LABO','MYSE','MYTH','PAHE')
 
 
 #look at raw detentions summarized as a quick check
