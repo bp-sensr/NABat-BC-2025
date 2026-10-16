@@ -1378,31 +1378,11 @@ Because the dynamic occupancy model estimates detection probability separately f
 
 ## Species Presence
 
-Species ranges across the project period (2016--2025) continue to appear broadly stable, with no grid cells showing conspicuous or sustained absences for previously detected species.
-
-- Northern Myotis was detected for the first time in 3 grids (20330, 218282 and 89962) in the southern Kootney region, this is a bit part the southern edge of their range. This at the southern edge of their range, and might be suggesting a small range expansion. Continued monitoring specifically looking for this species with acoustics
-
-- **Long-legged myotis** was detected at fewer sites in 2025: 76 sites across 39 grid cells, down from 92 sites across 45 grid cells in 2023. It was not detected at 19 sites where it was recorded in 2023, and it was absent from every site in 9 grid cells where it had been present that year. Most of these losses were in the Okanagan Region (8 sites, 5 grid cells) and the South Coastal Region (5 sites, 2 grid cells). The remaining losses were in the Kootenay and Northern regions (3 sites and 1 grid cell each). This decline likely reflects natural year-to-year variation rather than a population change. In 2025, the species was detected at 59% of surveyed sites, which is within the range recorded in 2017–2020 (51–61%), and 2023 was the program’s highest year for this species (80%). Year-to-year turnover in detections at individual sites is also common for most species in the program. However, the proportion of sites with detections has now declined for two consecutive years, so this species should be watched in future surveys.
-
-- **Eastern red bat** detections increased in the Kootenay and Okanagan regions in 2025, and it was detected in 17 grid cells, its highest number to date. Four of these cells had no previous detections (111466, 243562, 194666, and186330). Eastern red bat was not detected in the South Coastal Region in 2025 after being recorded there each year from 2021 to 2024. Detections there have always been sparse (1 to 6 sites a year), and year-to-year variation of this size is common, so this is not currently a cause for concern.
-
 ## Trend analyses
 
 ### Activity Trends
 
----we still have positive trends even though we are using auto ID. Also compare to previou syears trend results and whether they are consistent or not. How do these compare to Dynamic occupancy?
-
-Overall, results suggest that bat populations remain broadly stable across British Columbia, with no species showing widespread negative trends.
-
-Several species showed statistically significant positive trends in both province-wide and South Coastal regional models. However, these results should be interpreted with caution. Caution is warranted when evaluating the magnitude of the trend estimates. Several models exhibited underdispersion, which, while not unexpected given the structural characteristics of acoustic bat activity data, means that confidence intervals and effect sizes should be interpreted carefully rather than taken at face value.
-
-The significant negative trend detected for Hoary Bat in the South Coastal Region warrants attention and should be monitored closely in coming years to determine whether this represents a genuine localized decline or reflects sampling variability.
-
-More broadly, as threats to bat populations continue to grow, it may be worth exploring complementary analytical approaches alongside activity-based trend models. Acoustic activity metrics carry inherent noise, and detecting meaningful population signals can be challenging, particularly for species with low detection rates or patchy distributions. We recommend exploring occupancy modelling as a complementary approach in future analyses, as it may provide a clearer population signal by reducing the noise inherent in activity-based trend estimates from stationary acoustic data.
-
 ### Dynamic Occupancy
-
-The dynamic occupancy estimates suggest that the bat community in BC appears to be generally stable to increasing over 2017-2025, with no species showing evidence of decline. Species showing strongest increases are Myotis species and LABO. Two species can't be reliably assessed (PAHE, TABR) due to very low detection rates. Distance to road has an effect on colonization and persistence dynamics for several species, with sites closer to roads tending to have higher turnover.
 
 ## Challenges and Lessons Learned
 
