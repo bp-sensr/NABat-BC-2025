@@ -1203,21 +1203,7 @@ if (is_html) {
 
 ## Activity and Abundance Trend Models
 
-This was the first year where the stationary acoustics activity trend models were modelled for all species. Our post hoc model tests showed that all the models fit ok, especially if only looking at general direction of the activity trends. ANPA still had few detections so although we are reporting it be careful. \
-\
-We estimated yearly trends in nightly acoustic activity for `r sum(merged_table$stationary_trend != "", na.rm = TRUE)` of BC's 15 resident species. Transect data was sufficient to estimate trends for `r sum(merged_table$transect_trend != "", na.rm = TRUE)` species in BC (@tbl-modelcov). Of the stationary models, four species showed statistically significant positive trends (p \< 0.05)
-
-- Townsend's Big-eared Bat (`r merged_table$stationary_trend[merged_table$Species == "Townsend's Big-eared Bat"]`)
-
-- Big Brown Bat (`r merged_table$stationary_trend[merged_table$Species == "Big Brown Bat"]`)
-
-- Long-legged Myotis (`r merged_table$stationary_trend[merged_table$Species == "Long-legged Myotis"]`).
-
-- Yuma Myotis (`r merged_table$stationary_trend[merged_table$Species == "Yuma Myotis"]`).
-
-- MYLU had a bit of over dispersion, which likely undestimates the confidence intervals, so be skeptical of this result
-
-The remaining 7 species had non-significant trend estimates for stationary acoustics. Transect models yielded results for fewer species, with significant positive result for the little brown Myotis (`r merged_table$transect_trend [merged_table$Species == "Little Brown Myotis"]`) and the long-legged Myotis (`r merged_table$transect_trend [merged_table$Species == "Long-legged Myotis"]`)
+2025 was the first year in which provincial-scale trends in stationary acoustic activity could be modelled for all 15 bat species. Model diagnostics indicated that all provincial stationary models fit adequately for interpreting the direction of activity trends, although several had minor deviations occurred across most models. Because some assumptions were not fully met, the magnitude of the estimated trends should be interpreted with caution, and we focus on trend direction throughout. For mobile transects, low numbers of recordings limited reliable trend estimation to 8 of the 15 species.\
 
 ```{r}
 #| echo: false
@@ -1241,11 +1227,7 @@ kable(merged_table %>% select(Species, stationary_trend, stationary_p, transect_
   column_spec(5, bold = ifelse(!is.na(merged_table$transect_pval) & merged_table$transect_pval < 0.05, TRUE, FALSE))
 ```
 
-Regional trend analyses revealed significant results (p \< 0.05) across all regions with the most found in the South Coastal region (@tbl-regionmodelcov). Most significant results were positive, but significant negative trends were found in:
-
-- Hoary Bat in the South coastal Region (`r final_table[final_table$Species == "Hoary Bat", "South Coastal Region_trend_ci"]`)
-
-- Yuma Myotis in the Northern Region (`r final_table[final_table$Species == "Yuma Myotis", "Northern Region_trend_ci"]` ).
+All regional trend models converged, but after inspecting the model fit we found seven region specific results not to be reliable and where excluded.
 
 ```{r}
 #| echo: false
