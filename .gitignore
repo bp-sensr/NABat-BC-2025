@@ -15,3 +15,7 @@ Archive/
 /Data/Analyzed/MapDataSummary.rds
 
 /AppendixA_test.qmd
+
+#cache and temporary data
+/NABat-BC_2016-2025_cache/
+/NABat-BC_2016-2025_files/
