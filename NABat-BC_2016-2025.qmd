@@ -1475,37 +1475,41 @@ Acoustic data suggest that bat populations in BC are generally stable. Across bo
 #| warning: false
 #| message: false
 #| label: tbl-trendcompare
-#| tbl-cap: Summary of provincial-scale population trends for bat species in British Columbia. Activity and transect trends are based on the year coefficient (2016-2025) from models of nightly stationary and mobile transect activity, with increases or decreases identified at p < 0.05. Dynamic occupancy trends are based on the change in occupancy probability between the first and last survey year across all sites (2017-2025), with increases or decreases identified when the 95% credible interval excluded zero. “Not assessed” indicates species that were excluded from, or not modelled in, a given analysis.
+#| tbl-cap: "Summary of provincial-scale population trends for bat species in British Columbia. Activity and transect trends are based on the year coefficient (2016-2025) from models of nightly stationary and mobile transect activity, with increases or decreases identified at p < 0.05. Dynamic occupancy trends are based on the change in occupancy probability between the first and last survey year across all sites (2017-2025), with increases or decreases identified when the 95% credible interval excluded zero. “Not assessed” indicates species that were excluded from, or not modelled in, a given analysis."
 #| tbl-pos: 'H'
 
+trend_gt <- trend_compare |>
+  gt() |>
+  cols_label(
+    species     = "Code",
+    common_name = "Common name",
+    act_trend   = "Activity",
+    tran_trend  = "Transect",
+    occ_trend   = "Dynamic occupancy"
+  ) |>
+  data_color(
+    columns = c(act_trend, tran_trend, occ_trend),
+    method  = "factor",
+    levels  = trend_levels,
+    palette = c("#cfe8d5", "#eeeeee", "#f6d1cc", "#ffffff")
+  ) |>
+  cols_align(align = "center", columns = c(act_trend, tran_trend, occ_trend)) |>
+  tab_footnote(
+    footnote = paste0("Year coefficient; increase or decrease when p < ", alpha, "."),
+    locations = cells_column_labels(columns = c(act_trend, tran_trend))
+  ) |>
+  tab_footnote(
+    footnote = "Change in occupancy probability between the first and last year across all sites; increase or decrease when the 95% credible interval excludes zero.",
+    locations = cells_column_labels(columns = occ_trend)
+  )
+
 if (is_html) {
-  trend_compare |>
-    gt() |>
-    cols_label(
-      species     = "Code",
-      common_name = "Common name",
-      act_trend   = "Activity",
-      tran_trend  = "Transect",
-      occ_trend   = "Dynamic occupancy"
-    ) |>
-    data_color(
-      columns = c(act_trend, tran_trend, occ_trend),
-      method  = "factor",
-      levels  = trend_levels,
-      palette = c("#cfe8d5", "#eeeeee", "#f6d1cc", "#ffffff")
-    ) |>
-    cols_align(align = "center", columns = c(act_trend, tran_trend, occ_trend)) |>
-    tab_footnote(
-      footnote = paste0("Year coefficient; increase or decrease when p < ", alpha, "."),
-      locations = cells_column_labels(columns = c(act_trend, tran_trend))
-    ) |>
-    tab_footnote(
-      footnote = "Change in occupancy probability between the first and last year across all sites; increase or decrease when the 95% credible interval excludes zero.",
-      locations = cells_column_labels(columns = occ_trend)
-    )
-  
+  trend_gt
 } else {
-  trend_compare
+  png_file <- file.path("figures", "tbl_trendcompare.png")
+  dir.create(dirname(png_file), showWarnings = FALSE)
+  gtsave(trend_gt, png_file, zoom = 3, expand = 10)  # zoom = 3 keeps it crisp in print
+  knitr::include_graphics(png_file)
 }
 ```
 
