@@ -8,7 +8,7 @@
 
 # Project folders not tracked
 Archive/
-/Data/Raw/
+/Data/
 
 #specific data
 /Data/Analyzed/MapDataSummary.csv
