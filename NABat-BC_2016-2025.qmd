@@ -1,6 +1,6 @@
 ---
 title: "North American Bat Monitoring Program in British Columbia"
-subtitle: "Data Summary and Activity Trend Analyses: 2017 - 2025"
+subtitle: "Data Summary and Trend Analyses: 2016 - 2025"
 format:
   html:
     grid:
@@ -1285,7 +1285,7 @@ if (is_html) {
 #| echo: false
 #| warning: false
 #| message: false
-#| label: tbl-provatrend
+#| label: tbl-provtrend
 #| tbl-cap:  Provincial stationary and transect trend estimates from 2017-2025 NABat monitoring in BC adjusted for covariates. Trends estimated on a logarithmic scale, thus a trend estimate of 0.05 corresponds to an annual change of 5%. Significant results (p value < 0.05) are highlighted in bold.
 #| tbl-pos: 'H'
 
@@ -1303,7 +1303,7 @@ kable(merged_table %>% select(Species, stationary_trend, stationary_p, transect_
   column_spec(5, bold = ifelse(!is.na(merged_table$transect_pval) & merged_table$transect_pval < 0.05, TRUE, FALSE))
 ```
 
-At the provincial scale, no species showed a significant negative trend in either the stationary or the transect models. Stationary activity increased significantly for five species: pallid bat, Townsend’s big-eared bat, big brown bat, long-eared Myotis and Yuma Myotis (@tbl-provatrend) . In the transect models, only little brown Myotis and long-legged Myotis showed significant positive trends.
+At the provincial scale, no species showed a significant negative trend in either the stationary or the transect models. Stationary activity increased significantly for five species: pallid bat, Townsend’s big-eared bat, big brown bat, long-eared Myotis and Yuma Myotis (@tbl-provtrend) . In the transect models, only little brown Myotis and long-legged Myotis showed significant positive trends.
 
 All regional trend models converged; however, after inspecting model fit, we judged seven region-specific results to be unreliable and excluded them. Most of the remaining regional trends were not significant (@tbl-regiontrend). The Kootenay and South Coastal regions had the most significant trends, all of them positive. In the Kootenay region, activity increased for five species (pallid bat, Townsend’s big-eared bat, western small-footed Myotis, long-eared Myotis and little brown Myotis). In the South Coastal region, activity increased for five species (Townsend’s big-eared bat, big brown bat, California Myotis, long-eared Myotis and Yuma Myotis). Big brown bat also increased in the Okanagan region. The only significant negative regional trend was for Yuma Myotis in the Northern region.
 
@@ -1417,10 +1417,10 @@ In the South Coastal Region, hoary bat had a negative mean yearly trend and a lo
 
 ![Regional estimated occupancy trends for 15 bat species in British Columbia (2017--2025). Points and bars show the posterior mean and 95% credible interval of the linear change in occupancy per year. The dashed line marks zero, where there is no change in mean yearly occupancy. Colour shows the posterior probability (at ≥ 0.95) that the occupancy in 2025 was higher (green) or lower (red) than in 2017 . Grey means the probability is uncertain. Slope and colour can disagree when trends are non-linear.](Figures/DOccupancy/figC_regional_trends_all_species.png){#fig-regocc}
 
-To show how occupancy varied across space and time, we mapped the model-estimated probability of occupancy at each site for every year from 2017 to 2025 (@fig-occ-slider). The map lets readers select a species and move through the years to see where occupancy has changed. Each point’s colour shows the model’s estimate of for yearly probability of occupancy, while its shape shows whether the species was detected that year (circle) or not (triangle). Because the occupancy model accounts for imperfect detection, a site where a species was not detected can still have a high estimated probability of occupancy. This is especially likely for species that are hard to detect acoustically, or at sites with few survey nights in a given year. The map therefore shows where a species was likely present, not just where it was recorded.
+To show how occupancy varied across space and time, we mapped the model-estimated probability of occupancy at each site for every year from 2017 to 2025 (@fig-occslider). The map lets readers select a species and move through the years to see where occupancy has changed. Each point’s colour shows the model’s estimate of for yearly probability of occupancy, while its shape shows whether the species was detected that year (circle) or not (triangle). Because the occupancy model accounts for imperfect detection, a site where a species was not detected can still have a high estimated probability of occupancy. This is especially likely for species that are hard to detect acoustically, or at sites with few survey nights in a given year. The map therefore shows where a species was likely present, not just where it was recorded.
 
 ```{r}
-#| label: fig-occ-slider
+#| label: fig-occslider
 #| fig-cap: "Probability of occupancy per site by year for 15 bat species in British Columbia with reliable occupancy estimates. Use the buttons to switch species and the slider to change year. Circles = detected; triangles = not detected that year; colour = model inference for probability of occupancy."
 #| echo: false
 #| warning: false
@@ -1509,11 +1509,11 @@ if (is_html) {
 }
 ```
 
-Little brown Myotis showed a positive trend in transect activity ( @tbl-provatrend ) and an overall increase in occupancy (@fig-sppocc; [Appendix A](#sec-MYLU)), suggesting the species is increasing across the province. However, *Pseudogymnoascus destructans* (Pd), the fungus that causes white-nose syndrome (WNS), was confirmed in the South Coastal Region in 2026 (Kellner, pers. comm.), so this trend is likely to change in coming years. Continued monitoring will be essential for detecting the effects of WNS on this species in BC.
+Little brown Myotis showed a positive trend in transect activity ( @tbl-provtrend ) and an overall increase in occupancy (@fig-sppocc; [Appendix A](#sec-MYLU)), suggesting the species is increasing across the province. However, *Pseudogymnoascus destructans* (Pd), the fungus that causes white-nose syndrome (WNS), was confirmed in the South Coastal Region in 2026 (Kellner, pers. comm.), so this trend is likely to change in coming years. Continued monitoring will be essential for detecting the effects of WNS on this species in BC.
 
-Long-eared Myotis increased in both stationary acoustic activity and occupancy (@tbl-provatrend;@fig-sppocc), with increases in both analyses concentrated in the Kootenay and South Coastal regions. The reason for this increase is unclear, and it may be partly an artifact of detection. Detection probability for this species was higher from 2023 to 2025 than from 2017 to 2022 ([Appendix A](#sec-MYEV)), which suggests that something changed in 2023 that made the species easier to detect. Equipment updates are the most likely cause. If equipment changes can be ruled out, a closer look at changes in the Kootenay and South Coastal regions in this period is needed to help explain the increase.
+Long-eared Myotis increased in both stationary acoustic activity and occupancy (@tbl-provtrend;@fig-sppocc), with increases in both analyses concentrated in the Kootenay and South Coastal regions. The reason for this increase is unclear, and it may be partly an artifact of detection. Detection probability for this species was higher from 2023 to 2025 than from 2017 to 2022 ([Appendix A](#sec-MYEV)), which suggests that something changed in 2023 that made the species easier to detect. Equipment updates are the most likely cause. If equipment changes can be ruled out, a closer look at changes in the Kootenay and South Coastal regions in this period is needed to help explain the increase.
 
-Silver-haired bat may also be increasing in the Kootenay and South Coastal regions, although this is based on occupancy results alone (@tbl-provatrend; @fig-sppocc). A similar increase in occupancy has been reported for this species in Southeast Alaska [@hurtado2026]. This trend warrants close monitoring, particularly given planned increases in wind energy development in northern BC.
+Silver-haired bat may also be increasing in the Kootenay and South Coastal regions, although this is based on occupancy results alone (@tbl-provtrend; @fig-sppocc). A similar increase in occupancy has been reported for this species in Southeast Alaska [@hurtado2026]. This trend warrants close monitoring, particularly given planned increases in wind energy development in northern BC.
 
 Fringed Myotis showed no trend in activity but declined in occupancy, driven primarily by a decrease in the Okanagan Region. Continued monitoring will be needed to confirm this decline and to help identify potential causes. @lile2026 found that the number of Myotis species captured has declined since the arrival of WNS in South Dakota, and fringed Myotis was among the species with significantly fewer captures. A decline in fringed Myotis is therefore a concern: if the species is already decreasing before WNS becomes established in BC, the disease could accelerate that
 
@@ -1527,7 +1527,7 @@ Field crews across British Columbia continue to reliably collect recordings for 
 
 The BC NABat program has yielded a large and robust acoustic dataset that provides solid baseline information on distribution of 15 resident BC bat species. The data that has been collected so far are an invaluable reference point for BC's bat distributions and activity that improve with each additional year of monitoring. Key considerations for the future of the program include:
 
-- **Manual Verification Efficiency.** For many years, the program manually verified 100% of acoustic recordings. As the program continues to expand, this level of effort is no longer sustainable, and manual vetting was reduced to 50% of recordings following the results of @stratton2022. Since 2023, manual verification has been used only to confirm species presence, while activity metrics are based on automated Kaleidoscope classifications. For the occupancy analyses, manual verification is only needed to confirm species presence at each site and to remove false positive IDs. The additional verification the program currently completes is valuable for maintaining a clean dataset that can be used to evaluate how vetting effort affects results, as it already has been in @stratton2022. However, it is not required for the analyses presented in this report. If the program needs to find efficiencies, reducing manual verification to the level required for occupancy analyses should be considered
+- **Manual Verification Efficiency.** For many years, the program manually verified 100% of acoustic recordings. As the program continues to expand, this level of effort is no longer sustainable, and manual vetting was reduced to 50% of recordings following the results of @stratton2022Coupling. Since 2023, manual verification has been used only to confirm species presence, while activity metrics are based on automated Kaleidoscope classifications. For the occupancy analyses, manual verification is only needed to confirm species presence at each site and to remove false positive IDs. The additional verification the program currently completes is valuable for maintaining a clean dataset that can be used to evaluate how vetting effort affects results, as it already has been in @stratton2022Coupling. However, it is not required for the analyses presented in this report. If the program needs to find efficiencies, reducing manual verification to the level required for occupancy analyses should be considered
 
 - **Efficiencies in monitoring.** Grid leaders should continue to be encouraged to use Survey123 to streamline site deployment; in 2024 and 2025 this platform was not used consistently across all grids. Using it also helps ensure that metadata are consistent and complete. In 2026 we can also examine efficiencies in weather data collection, specifically evaluating whether continued use of on-site temperature and humidity loggers yields results comparable to weather data drawn from the nearest weather stations.
 
