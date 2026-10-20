@@ -1215,7 +1215,13 @@ All 15 species monitored by the program were detected in 2025. Total acoustic ac
 
 - **Long-legged myotis** was detected at 76 sites across 39 grid cells in 2025, down from 92 sites across 45 grid cells in 2023 (the highest year of detection for the species). Most of these losses were in the Okanagan Region (8 sites, 5 grid cells) and the South Coastal Region (5 sites, 2 grid cells). The remaining losses were in the Kootenay and Northern regions (3 sites and 1 grid cell each).
 
+::: {.content-visible when-format="html"}
 @fig-map is an interactive map. Readers can zoom in to see the individual stationary monitoring sites (blue circles), and click a site to open a pop-up with a summary pie chart of total detections by species and year. Readers can also search for specific grid cells using the ![](images/clipboard-4082158342.png){width="26" height="27"} icon.
+:::
+
+::: {.content-visible when-format="pdf"}
+Site-specific summaries of species detected in each survey year are provided in Appendix B.
+:::
 
 ```{r}
 #| echo: false
