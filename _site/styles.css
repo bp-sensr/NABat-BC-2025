@@ -1,0 +1,15 @@
+.quarto-title-block .quarto-title-banner {
+  background-image: 
+    url('logos/NABat.png'),
+    url('logos/BatHub_Logo_colour.png');
+  background-size: 
+    200px,
+    200px;
+  background-position: 
+    left,
+    right;
+  background-repeat: no-repeat;
+  padding-left: 10px;
+  padding-right: 10px;
+  background-origin: content-box;
+}

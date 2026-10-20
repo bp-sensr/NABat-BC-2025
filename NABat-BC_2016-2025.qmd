@@ -1312,7 +1312,7 @@ All regional trend models converged; however, after inspecting model fit, we jud
 #| warning: false
 #| message: false
 #| label: tbl-regiontrend
-#| tbl-cap:  Regional trend estimates from 2017-2024 NABat monitoring in BC adjusted for covariates. Trends estimated on a logarithmic scale, thus a trend estimate of 0.05 corresponds to an annual change of 5%. Significant results (p value < 0.05) are highlighted in bold.
+#| tbl-cap:  Regional trend estimates from 2016-2024 NABat monitoring in BC adjusted for covariates. Trends estimated on a logarithmic scale, thus a trend estimate of 0.05 corresponds to an annual change of 5%. Significant results (p value < 0.05) are highlighted in bold.
 #| tbl-pos: 'H'
 
 if (is_html) {
@@ -1389,7 +1389,12 @@ if (is_html) {
   tbl_top    <- make_gt_subtable(final_table, regions_top)
   tbl_bottom <- make_gt_subtable(final_table, regions_bottom)
   
-  knit_print(tbl_top)
+  knitr::asis_output(paste(
+    as.character(as_latex(tbl_top)),
+    "\\vspace{1em}",
+    as.character(as_latex(tbl_bottom)),
+    sep = "\n\n"
+  ))
 }
 ```
 
@@ -1417,7 +1422,9 @@ In the South Coastal Region, hoary bat had a negative mean yearly trend and a lo
 
 ![Regional estimated occupancy trends for 15 bat species in British Columbia (2017--2025). Points and bars show the posterior mean and 95% credible interval of the linear change in occupancy per year. The dashed line marks zero, where there is no change in mean yearly occupancy. Colour shows the posterior probability (at ≥ 0.95) that the occupancy in 2025 was higher (green) or lower (red) than in 2017 . Grey means the probability is uncertain. Slope and colour can disagree when trends are non-linear.](Figures/DOccupancy/figC_regional_trends_all_species.png){#fig-regocc}
 
+::: {.content-visible when-format="html"}
 To show how occupancy varied across space and time, we mapped the model-estimated probability of occupancy at each site for every year from 2017 to 2025 (@fig-occslider). The map lets readers select a species and move through the years to see where occupancy has changed. Each point’s colour shows the model’s estimate of for yearly probability of occupancy, while its shape shows whether the species was detected that year (circle) or not (triangle). Because the occupancy model accounts for imperfect detection, a site where a species was not detected can still have a high estimated probability of occupancy. This is especially likely for species that are hard to detect acoustically, or at sites with few survey nights in a given year. The map therefore shows where a species was likely present, not just where it was recorded.
+:::
 
 ```{r}
 #| label: fig-occslider
@@ -1508,7 +1515,7 @@ if (is_html) {
 } else {
   png_file <- file.path("figures", "tbl_trendcompare.png")
   dir.create(dirname(png_file), showWarnings = FALSE)
-  gtsave(trend_gt, png_file, zoom = 3, expand = 10)  # zoom = 3 keeps it crisp in print
+  gtsave(trend_gt, png_file, zoom = 2, expand = 1)  # zoom = 3 keeps it crisp in print
   knitr::include_graphics(png_file)
 }
 ```
