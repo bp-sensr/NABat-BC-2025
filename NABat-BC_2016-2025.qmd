@@ -110,7 +110,6 @@ nocite: '@*'
 #    206394, "Naikoon",
 #    212906, "Horne Lake",
 #    230186, "Skagit",
-#    243562, "Kimberley",
 #    265749, "Kettle/Conkle",
 #    283586, "Lakelse Lake",
 #    317428, "Manning"
@@ -215,6 +214,12 @@ parksSamplingE <- read.csv("Data/Analyzed/ParksSamplingEffort.csv")
 #remove extra column with numebrs
 samplingE$X <- NULL
 parksSamplingE$X <- NULL
+
+#update the parkssamplingE so checkmark appears in pdf 
+tick <- if (knitr::is_latex_output()) "$\\checkmark$" else "&#10003;"
+
+parksSamplingE <- parksSamplingE %>%
+  mutate(across(3:12, ~ ifelse(grepl("\u2713|\u00e2\u0153", .x), tick, "")))
 
 #get the number of grids sampled in 2025
 SampledGrids2025 <- samplingE$`Number of Grids`[samplingE$Year==2025]
@@ -1053,18 +1058,21 @@ In 2025 a total of `r samplingE[10,2]` grid cells were monitored for a total of 
 #| fig.pos: 'H'
 
 kable(parksSamplingE,
+      format    = "latex",          # or omit if this chunk only renders to PDF
+      booktabs  = TRUE,
       col.names = c("GRTS Cell ID", "Park", 2016:2025, "Total Years"),
-      label = "parks-sampling",
-      escape = FALSE,
-      align = c("c", "l", rep("c", 10), "c")) %>%
-  kable_styling(bootstrap_options = c("striped"),
+      escape    = FALSE,
+      align     = c("c", "l", rep("c", 10), "c"),
+      linesep   = "") %>%            # removes the extra space booktabs adds every 5 rows
+  kable_styling(latex_options = c("striped", "scale_down", "HOLD_position"),
+                font_size = 8,
                 full_width = FALSE,
                 position = "center") %>%
   add_header_above(c(" " = 2, "Year" = 10, " " = 1)) %>%
-  column_spec(1, width = "6em") %>%
-  column_spec(2, width = "10em") %>%
-  column_spec(3:12, width = "3em") %>%
-  column_spec(13, width = "6em")
+  column_spec(1, width = "4em") %>%
+  column_spec(2, width = "7em") %>%
+  column_spec(3:12, width = "2.2em") %>%
+  column_spec(13, width = "3em")
 ```
 
 ### Stationary Surveys
@@ -1292,7 +1300,7 @@ if (is_html) {
 #| warning: false
 #| message: false
 #| label: tbl-provtrend
-#| tbl-cap:  Provincial stationary and transect trend estimates from 2017-2025 NABat monitoring in BC adjusted for covariates. Trends estimated on a logarithmic scale, thus a trend estimate of 0.05 corresponds to an annual change of 5%. Significant results (p value < 0.05) are highlighted in bold.
+#| tbl-cap:  Provincial stationary and transect trend estimates from 2016-2025 NABat monitoring in BC adjusted for covariates. Trends estimated on a logarithmic scale, thus a trend estimate of 0.05 corresponds to an annual change of 5%. Significant results (p value < 0.05) are highlighted in bold.
 #| tbl-pos: 'H'
 
 # Display table with conditional bolding
