@@ -747,12 +747,145 @@ figC <- ggplot(reg_trend, aes(x = slope, y = species, colour = direction)) +
                                  "Decrease (P \u2265 0.95)" = "#b2182b",
                                  "Uncertain" = "grey50"), name = NULL) +
   labs(title = "Regional occupancy trends by species",
+       subtitle = paste0("Two different trend metrics presented:\n",
+                         "\u2022 Points and lines: posterior mean linear change in occupancy per year (95% credible interval).\n",
+                         "\u2022 Colour: posterior probability that occupancy in the last year is higher than in the first year.\n",
+                         "Species with no detections in a region are omitted from that panel."),
+       x = "Change in occupancy per year", y = NULL) +
+   theme_occ +
+  theme(legend.position = "bottom")
+
+ggsave(file.path(all_fig_dir, "figC_regional_trends_all_species.png"),
+       figC, width = 13, height = 6.5, dpi = 300)
+
+# --- B & C. Occupancy trends, all species (shared x-axis) ---
+trend_dir <- function(p) {
+  case_when(p >= 0.95 ~ "Increase (P \u2265 0.95)",
+            p <= 0.05 ~ "Decrease (P \u2265 0.95)",
+            TRUE      ~ "Uncertain")
+}
+trend_cols <- c("Increase (P \u2265 0.95)" = "#1b7837",
+                "Decrease (P \u2265 0.95)" = "#b2182b",
+                "Uncertain" = "grey50")
+
+bc_trend <- trend_all %>%
+  filter(scope == "BC (all sites)") %>%
+  mutate(direction = trend_dir(p_increase),
+         species = reorder(species, slope))
+
+# Species-region combinations with zero detections are dropped: there is no
+# trend to estimate in a region where the species was never recorded.
+reg_trend <- trend_all %>%
+  filter(!grepl("^BC", scope), n_detections > 0) %>%
+  mutate(direction = trend_dir(p_increase))
+reg_trend$species <- factor(reg_trend$species, levels = rev(sort(unique(reg_trend$species))))
+
+# One x-axis for both figures, covering every CI in either one
+trend_xlim   <- range(c(bc_trend$slope_lo95,  bc_trend$slope_hi95,
+                        reg_trend$slope_lo95, reg_trend$slope_hi95), na.rm = TRUE)
+trend_breaks <- pretty(trend_xlim, n = 5)
+trend_x <- list(
+  scale_x_continuous(breaks = trend_breaks),
+  coord_cartesian(xlim = trend_xlim)   # zooms without dropping any data
+)
+
+figB <- ggplot(bc_trend, aes(x = slope, y = species, colour = direction)) +
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_linerange(aes(xmin = slope_lo95, xmax = slope_hi95), linewidth = 0.6) +
+  geom_point(size = 2.5) +
+  trend_x +
+  scale_colour_manual(values = trend_cols, name = NULL, drop = FALSE) +
+  labs(title = "BC-wide occupancy trend by species",
+       subtitle = paste0("Linear slope of occupancy on year (95% CI), all sites. Colour: posterior probability that ",
+                         "occupancy in the last year exceeds the first. Same x-axis as the regional figure."),
+       x = "Change in occupancy per year", y = NULL) +
+  theme_occ +
+  theme(legend.position = "bottom")
+
+ggsave(file.path(all_fig_dir, "figB_bc_trends_all_species_SameAxis.png"),
+       figB, width = 8, height = 6.5, dpi = 300)
+
+figC <- ggplot(reg_trend, aes(x = slope, y = species, colour = direction)) +
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_linerange(aes(xmin = slope_lo95, xmax = slope_hi95), linewidth = 0.6) +
+  geom_point(size = 2) +
+  facet_wrap(~ scope, nrow = 1) +
+  trend_x +
+  scale_colour_manual(values = trend_cols, name = NULL, drop = FALSE) +
+  labs(title = "Regional occupancy trends by species",
        subtitle = "Linear slope of occupancy on year (95% CI). Species with no detections in a region are omitted from that panel.",
        x = "Change in occupancy per year", y = NULL) +
   theme_occ +
   theme(legend.position = "bottom")
 
-ggsave(file.path(all_fig_dir, "figC_regional_trends_all_species.png"),
+ggsave(file.path(all_fig_dir, "figC_regional_trends_all_species_SameAxis.png"),
+       figC, width = 13, height = 6.5, dpi = 300)
+
+# --- B & C. Occupancy trends, all species (shared x-axis) ---
+trend_dir <- function(p) {
+  case_when(p >= 0.95 ~ "Increase (P \u2265 0.95)",
+            p <= 0.05 ~ "Decrease (P \u2265 0.95)",
+            TRUE      ~ "Uncertain")
+}
+trend_cols <- c("Increase (P \u2265 0.95)" = "#1b7837",
+                "Decrease (P \u2265 0.95)" = "#b2182b",
+                "Uncertain" = "grey50")
+
+bc_trend <- trend_all %>%
+  filter(scope == "BC (all sites)") %>%
+  mutate(direction = trend_dir(p_increase),
+         species = reorder(species, slope))
+
+# Species-region combinations with zero detections are dropped: there is no
+# trend to estimate in a region where the species was never recorded.
+reg_trend <- trend_all %>%
+  filter(!grepl("^BC", scope), n_detections > 0) %>%
+  mutate(direction = trend_dir(p_increase))
+reg_trend$species <- factor(reg_trend$species, levels = rev(sort(unique(reg_trend$species))))
+
+# One x-axis for both figures, covering every CI in either one
+trend_xlim   <- range(c(bc_trend$slope_lo95,  bc_trend$slope_hi95,
+                        reg_trend$slope_lo95, reg_trend$slope_hi95), na.rm = TRUE)
+trend_breaks <- pretty(trend_xlim, n = 5)
+trend_x <- list(
+  scale_x_continuous(breaks = trend_breaks),
+  coord_cartesian(xlim = trend_xlim)   # zooms without dropping any data
+)
+
+figB <- ggplot(bc_trend, aes(x = slope, y = species, colour = direction)) +
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_linerange(aes(xmin = slope_lo95, xmax = slope_hi95), linewidth = 0.6) +
+  geom_point(size = 2.5) +
+  trend_x +
+  scale_colour_manual(values = trend_cols, name = NULL, drop = FALSE) +
+  labs(title = "Province wide occupancy trend by species",
+       subtitle = paste0("Two different trend metrics presented:\n",
+                         "\u2022 Points and lines: posterior mean linear change in occupancy per year (95% credible interval).\n",
+                         "\u2022 Colour: posterior probability that occupancy in the last year is higher than in the first year.\n"),
+       x = "Change in occupancy per year", y = NULL) +
+  theme_occ +
+  theme(legend.position = "bottom")
+
+ggsave(file.path(all_fig_dir, "figB_bc_trends_all_species_SameAxis.png"),
+       figB, width = 8, height = 6.5, dpi = 300)
+
+figC <- ggplot(reg_trend, aes(x = slope, y = species, colour = direction)) +
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_linerange(aes(xmin = slope_lo95, xmax = slope_hi95), linewidth = 0.6) +
+  geom_point(size = 2) +
+  facet_wrap(~ scope, nrow = 1) +
+  trend_x +
+  scale_colour_manual(values = trend_cols, name = NULL, drop = FALSE) +
+  labs(title = "Regional occupancy trends by species",
+       subtitle = paste0("Two different trend metrics presented:\n",
+                           "\u2022 Points and lines: posterior mean linear change in occupancy per year (95% credible interval).\n",
+                           "\u2022 Colour: posterior probability that occupancy in the last year is higher than in the first year.\n",
+                         "Species with no detections in a region are omitted from that panel."),
+       x = "Change in occupancy per year", y = NULL) +
+  theme_occ +
+  theme(legend.position = "bottom")
+
+ggsave(file.path(all_fig_dir, "figC_regional_trends_all_species_SameAxis.png"),
        figC, width = 13, height = 6.5, dpi = 300)
 
 # --- D. Occupancy in the final year, species x region ---

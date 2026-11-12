@@ -604,29 +604,29 @@ merged_table <- merged_table %>%
   select(Species, stationary_trend, stationary_p, stationary_pval,
          transect_trend, transect_p, transect_pval)
 
-# Add excluded species back as empty rows so they still appear in the table
-excluded_rows <- tibble(
-  SpeciesCode = excluded_stationary,
-  Species = species_names[excluded_stationary],
-  stationary_trend = "",
-  stationary_p = "",
-  stationary_pval = NA_real_,
-  transect_trend = "",
-  transect_p = "",
-  transect_pval = NA_real_
-)
+# # Add excluded species back as empty rows so they still appear in the table
+# excluded_rows <- tibble(
+#   SpeciesCode = excluded_stationary,
+#   Species = species_names[excluded_stationary],
+#   stationary_trend = "",
+#   stationary_p = "",
+#   stationary_pval = NA_real_,
+#   transect_trend = "",
+#   transect_p = "",
+#   transect_pval = NA_real_
+# )
 
 # Bind and sort alphabetically by species code
 merged_table <- merged_table %>%
   mutate(SpeciesCode = names(species_names)[match(Species, species_names)]) %>%
-  bind_rows(excluded_rows) %>%
+  #bind_rows(excluded_rows) %>%
   arrange(SpeciesCode) %>%
   select(-SpeciesCode)
 
 # Replace NA with empty strings for display columns only
 merged_table <- merged_table %>%
   mutate(SpeciesCode = names(species_names)[match(Species, species_names)]) %>%
-  bind_rows(excluded_rows) %>%
+  #bind_rows(excluded_rows) %>%
   group_by(SpeciesCode) %>%
   arrange(
     desc(!is.na(stationary_pval) | stationary_trend != ""),
@@ -657,29 +657,35 @@ region.cov.slope.summary.singlet <- read.csv("Data/Analyzed/ActivityTrends/regio
 # (singular fit, < 20 non-zero cell-years, or dispersion ratio >= 2)
 excluded_regional <- tribble(
   ~Region,                 ~SpeciesGroup,
-  #"Kootenay Region",       "LACI",   # singular fit
-  #"Northern Region",       "LACI",   # singular fit
-  #"Northern Region",       "MYVO",   # singular fit
-  #"Okanagan Region",       "ANPA",   # singular fit
+  "Kootenay Region",       "LACI",   # singular fit
+  "Northern Region",       "LACI",   # singular fit
+  "Northern Region",       "MYVO",   # singular fit
+  "Okanagan Region",       "ANPA",   # singular fit
   "Okanagan Region",       "MYVO",   # overdispersion (2.89)
   "South Coastal Region",  "EUMA",   # singular fit; 6 non-zero cell-years
   "South Coastal Region",  "LABO"    # singular fit; 9 non-zero cell-years
-)
+) %>%
+  mutate(excluded = TRUE)
 
-# Define desired species display order (adjust to match your table)
+excl_symbol <- "**"   # change to "n.r.*", "—*", etc. if you prefer
+
 species_order <- c("ANPA", "COTO", "EPFU", "EUMA", "LABO", "LACI", "LANO",
                    "MYCA", "MYCI", "MYEV", "MYLU", "MYSE", "MYTH", "MYVO", "MYYU")
 
-# Process regional data
+# Process regional data: flag excluded fits instead of dropping them
 regional_wide <- region.cov.slope.summary.singlet %>%
-  anti_join(excluded_regional, by = c("Region", "SpeciesGroup")) %>%
+  left_join(excluded_regional, by = c("Region", "SpeciesGroup")) %>%
   mutate(
-    trend_ci = sprintf("%.2f ± %.2f", Estimate, 1.96 * Std..Error),
+    excluded = replace_na(excluded, FALSE),
+    trend_ci = if_else(excluded,
+                       excl_symbol,
+                       sprintf("%.2f ± %.2f", Estimate, 1.96 * Std..Error)),
     p_val = case_when(
-      Pr...z.. < 0.001 ~ "<0.001",
-      TRUE ~ sprintf("%.3f", Pr...z..)
+      excluded          ~ "",
+      Pr...z.. < 0.001  ~ "<0.001",
+      TRUE              ~ sprintf("%.3f", Pr...z..)
     ),
-    is_sig = Pr...z.. < 0.05
+    is_sig = !excluded & Pr...z.. < 0.05
   ) %>%
   select(Region, SpeciesGroup, trend_ci, p_val, is_sig) %>%
   pivot_wider(
@@ -687,7 +693,6 @@ regional_wide <- region.cov.slope.summary.singlet %>%
     values_from = c(trend_ci, p_val, is_sig),
     names_glue = "{Region}_{.value}"
   )
-
 regions <- c("Kootenay Region", "Northern Region", "Okanagan Region", "South Coastal Region")
 
 # Build final display table
@@ -1052,8 +1057,10 @@ In 2025 a total of `r samplingE[10,2]` grid cells were monitored for a total of 
 #| tbl-cap: Summary of yearly sampling of grid cells in BC Parks.
 #| fig.pos: 'H'
 
-#clarify if html or pdf
+# clarify if html or pdf
 is_pdf <- knitr::is_latex_output()
+fmt    <- if (is_pdf) "latex" else "html"
+
 # checkmark that works in both PDF and HTML
 tick <- if (is_pdf) "$\\checkmark$" else "&#10003;"
 
@@ -1061,16 +1068,17 @@ parksSamplingE <- parksSamplingE %>%
   mutate(across(3:12, ~ ifelse(grepl("\u2713|\u00e2\u0153", .x), tick, "")))
 
 kable(parksSamplingE,
-      format    = "latex",          # or omit if this chunk only renders to PDF
+      format    = fmt,
       booktabs  = TRUE,
       col.names = c("GRTS Cell ID", "Park", 2016:2025, "Total Years"),
       escape    = FALSE,
       align     = c("c", "l", rep("c", 10), "c"),
-      linesep   = "") %>%            # removes the extra space booktabs adds every 5 rows
-  kable_styling(latex_options = c("striped", "scale_down", "HOLD_position"),
-                font_size = 8,
+      linesep   = "") %>%
+  kable_styling(latex_options     = c("striped", "scale_down", "HOLD_position"),  # used in PDF only
+                bootstrap_options = c("striped", "condensed", "hover"),           # used in HTML only
+                font_size  = if (is_pdf) 8 else 13,
                 full_width = FALSE,
-                position = "center") %>%
+                position   = "center") %>%
   add_header_above(c(" " = 2, "Year" = 10, " " = 1)) %>%
   column_spec(1, width = "4em") %>%
   column_spec(2, width = "7em") %>%
@@ -1218,13 +1226,13 @@ Convergence was assessed using Rhat diagnostics, with values below 1.1 taken to 
 
 All 15 species monitored by the program were detected in 2025. Total acoustic activity varied substantially among grid cells and regions (@fig-map). Little brown myotis and silver-haired bat remain two of the most widespread species in the province. Notable changes in 2025 include:
 
--   **Pallid bat** was detected at only one site, in each of 2023 and 2024. In 2025 it was detected at 14 sites across 6 grid cells, its highest site count since monitoring began and slightly above 2022 (13 sites across 6 grid cells). Pallid bat was first recorded in the Kootenay Region in 2022 and was not detected there in 2023 or 2024. In 2025 it was detected at 8 Kootenay sites across 4 grid cells. Two of these grid cells (111466 and 243562) had no previous detections.
+- **Pallid bat** was detected at only one site, in each of 2023 and 2024. In 2025 it was detected at 14 sites across 6 grid cells, its highest site count since monitoring began and slightly above 2022 (13 sites across 6 grid cells). Pallid bat was first recorded in the Kootenay Region in 2022 and was not detected there in 2023 or 2024. In 2025 it was detected at 8 Kootenay sites across 4 grid cells. Two of these grid cells (111466 and 243562) had no previous detections.
 
--   **Eastern red bat** was detected at 35 sites across 17 grid cells in 2025. That is its highest site count to date, although it was found in more grid cells in 2022 (21). Four grid cells had no previous detections: 111466 and 243562 (Kootenay), 194666 (Okanagan) and 186330 (Northern). Eastern red bat was not detected in the South Coastal Region in 2025.
+- **Eastern red bat** was detected at 35 sites across 17 grid cells in 2025. That is its highest site count to date, although it was found in more grid cells in 2022 (21). Four grid cells had no previous detections: 111466 and 243562 (Kootenay), 194666 (Okanagan) and 186330 (Northern). Eastern red bat was not detected in the South Coastal Region in 2025.
 
--   **Northern myotis** was detected at 15 sites across 10 grid cells in 2025. In the southern Kootenay Region it was detected for the first time at 4 sites across 3 grid cells (20330, 89962 and 218282), near the southern edge of its range.
+- **Northern myotis** was detected at 15 sites across 10 grid cells in 2025. In the southern Kootenay Region it was detected for the first time at 4 sites across 3 grid cells (20330, 89962 and 218282), near the southern edge of its range.
 
--   **Long-legged myotis** was detected at 76 sites across 39 grid cells in 2025, down from 92 sites across 45 grid cells in 2023 (the highest year of detection for the species). Most of these losses were in the Okanagan Region (8 sites, 5 grid cells) and the South Coastal Region (5 sites, 2 grid cells). The remaining losses were in the Kootenay and Northern regions (3 sites and 1 grid cell each).
+- **Long-legged myotis** was detected at 76 sites across 39 grid cells in 2025, down from 92 sites across 45 grid cells in 2023 (the highest year of detection for the species). Most of these losses were in the Okanagan Region (8 sites, 5 grid cells) and the South Coastal Region (5 sites, 2 grid cells). The remaining losses were in the Kootenay and Northern regions (3 sites and 1 grid cell each).
 
 ::: {.content-visible when-format="html"}
 @fig-map is an interactive map. Readers can zoom in to see the individual stationary monitoring sites (blue circles), and click a site to open a pop-up with a summary pie chart of total detections by species and year. Readers can also search for specific grid cells using the ![](images/clipboard-4082158342.png){width="26" height="27"} icon.
@@ -1329,7 +1337,7 @@ All regional trend models converged; however, after inspecting model fit, we jud
 #| warning: false
 #| message: false
 #| label: tbl-regiontrend
-#| tbl-cap:  Regional trend estimates from 2016-2024 NABat monitoring in BC adjusted for covariates. Trends estimated on a logarithmic scale, thus a trend estimate of 0.05 corresponds to an annual change of 5%. Significant results (p value < 0.05) are highlighted in bold.
+#| tbl-cap:  Regional trend estimates (± 95% CI) from NABat acoustic monitoring in British Columbia, 2016–2024, adjusted for covariates. Trends are estimated on a log scale, so an estimate of 0.05 corresponds to an annual change of approximately 5%. Significant results (p < 0.05) are shown in bold. Asterisks (**) mark species detected in a region whose model was excluded after diagnostic checks showed poor fit. Blank cells mean the species was not modelled in that region.
 #| tbl-pos: 'H'
 
 if (is_html) {
@@ -1349,7 +1357,13 @@ if (is_html) {
     column_spec(c(2, 4, 6, 8), width = "3cm") %>%
     column_spec(c(3, 5, 7, 9), width = "1.5cm") %>%
     kable_styling(font_size = 9, full_width = TRUE) %>%
-    scroll_box(width = "100%", extra_css = "overflow-x: auto; min-width: 900px;")
+    scroll_box(width = "100%", extra_css = "overflow-x: auto; min-width: 900px;")%>%
+    footnote(
+      general = paste0(excl_symbol, " Species detected in this region, but the model was ","excluded due to poor fit. Blank cells indicate the species was not modelled in that region."),
+      general_title = "",
+      footnote_as_chunk = TRUE,
+      threeparttable = TRUE
+    )
   
 } else {
   regions_top    <- c("Kootenay Region", "Northern Region")
@@ -1417,17 +1431,17 @@ if (is_html) {
 
 ## Dynamic Occupancy Models
 
-We assessed occupancy trends in two ways: the mean yearly change in occupancy across 2017--2025, and the posterior probability that occupancy in 2025 was higher than in 2017. We considered a posterior probability above 0.95 to be strong evidence of an increase, and one below 0.05 to be strong evidence of a decline.
+We assessed occupancy trends with two complementary metrics: (1) the mean yearly change in occupancy from 2017 to 2025, estimated as the linear slope of occupancy on year, and (2) the posterior probability that occupancy in 2025 was higher than in 2017. A slope whose 95% credible interval excluded zero was taken as evidence of a consistent linear trend. A posterior probability ≥ 0.95 was taken as strong evidence of an increase between the end years, and ≤ 0.05 as strong evidence of a decline. @fig-sppocc shows both metrics: points and bars show the slope, and colour shows the end-year comparison.
 
-Overall, occupancy increased across British Columbia between 2017 and 2025 for four of the 15 species modelled (@fig-sppocc). Western long-eared Myotis, little brown Myotis, northern Myotis and silver-haired bat all showed a positive mean yearly trend and a high posterior probability of an increase in occupancy from 2017 to 2025, indicating strong evidence of an overall increase. Fringed Myotis was the only species with a consistent decrease in occupancy: its mean yearly change was negative, and the posterior probability that 2025 occupancy exceeded 2017 occupancy was very low, indicating strong evidence of a decline.
+The two summaries can disagree when occupancy changes non-linearly between the end years. For example, big brown bat showed no significant mean yearly change, but the posterior probability of an increase between 2017 and 2025 was low, which points to a decline over that period. This was driven by a high posterior mean occupancy in the first year and a slightly below-average posterior mean in the last year ([Appendix A](#sec-EPFU)), so it more likely reflects a stable population with an unusually high starting point than a true decline.
+
+Overall, occupancy increased across British Columbia between 2017 and 2025 for 4 of the 15 species modelled (@fig-sppocc). Western long-eared Myotis, little brown Myotis, northern Myotis and silver-haired bat all showed a positive mean yearly trend and a high posterior probability of an increase in occupancy from 2017 to 2025, indicating strong evidence of an overall increase. Fringed Myotis was the only species with a consistent decrease in occupancy: its mean yearly change was negative, and the posterior probability that 2025 occupancy exceeded 2017 occupancy was very low, indicating evidence of a decline.
 
 Yuma Myotis, western small-footed Myotis, spotted bat, pallid bat and hoary bat showed no detectable occupancy trend. Their mean yearly change was not significant, and the posterior probability of an increase from 2017 to 2025 gave no clear evidence of either an increase or a decline.
 
-Big brown bat showed no significant mean yearly change, but the posterior probability of an increase between 2017 and 2025 was low, which points to a decline over that period. This was driven by a high posterior mean occupancy in the first year and a slightly below-average posterior mean in the last year ([Appendix A](#sec-EPFU)), so it more likely reflects a stable population with an unusually high starting point than a true decline.
-
 Eastern red bat, long-legged Myotis, Townsend's big-eared bat and California Myotis had positive mean yearly trends. However, the posterior probability that occupancy was higher in 2025 than in 2017 was not high enough to conclude that occupancy increased overall. This pattern reflects nonlinear change across years (see species specific results in [Appendix A](#sec-AppendixA)). Occupancy fluctuated enough to produce a positive mean yearly trend, but the net difference between the first and last years was small, suggesting these species remained relatively stable over the monitoring period.
 
-![Estimated occupancy trends for 15 bat species in British Columbia (2017--2025) fit across all monitoring sites. Points and bars show the posterior mean and 95% credible interval of the linear change in occupancy per year. The dashed line marks zero, where there is no change in mean yearly opccupancy. Colour shows the posterior probability (at ≥ 0.95) that the occupancy in 2025 was higher (green) or lower (red) than in 2017 . Grey means the probability is uncertain. Slope and colour can disagree when trends are non-linear.](Figures/DOccupancy/figB_bc_trends_all_species.png){#fig-sppocc}
+![Estimated occupancy trends for 15 bat species across all NABat monitoring sites in British Columbia, 2017–2025. Points show the posterior mean of the linear change in occupancy probability per year, and bars show 95% credible intervals. A value of 0.01 means occupancy rose by an average of 1 percentage point per year. The dashed line at zero marks no change. Intervals that don’t cross zero indicate a significant linear trend. Colour shows a separate comparison: whether occupancy in 2025 differed from 2017. Green indicates that 2025 occupancy was higher than 2017 (P\>= 0.95), red that it was lower (P\>= 0.95), and grey that the evidence for a difference was weak. The two summaries can disagree when occupancy changes non-linearly between the end years.](Figures/DOccupancy/figB_bc_trends_all_species.png){#fig-sppocc}
 
 Among the regional models, the Kootenay Region showed the most positive trends ( @fig-regocc). Eastern red bat, silver-haired bat, western small-footed Myotis, western long-eared Myotis, little brown Myotis and long-legged Myotis all had a positive mean yearly trend and a high posterior probability of an increase in occupancy from 2017 to 2025.
 
@@ -1437,15 +1451,17 @@ In the Okanagan Region, Townsend's big-eared bat and eastern red bat had positiv
 
 In the South Coastal Region, hoary bat had a negative mean yearly trend and a low posterior probability of an increase. Silver-haired bat, California Myotis, western long-eared Myotis and Yuma Myotis had positive mean yearly trends and high posterior probabilities of an increase.
 
-![Regional estimated occupancy trends for 15 bat species in British Columbia (2017--2025). Points and bars show the posterior mean and 95% credible interval of the linear change in occupancy per year. The dashed line marks zero, where there is no change in mean yearly occupancy. Colour shows the posterior probability (at ≥ 0.95) that the occupancy in 2025 was higher (green) or lower (red) than in 2017 . Grey means the probability is uncertain. Slope and colour can disagree when trends are non-linear.](Figures/DOccupancy/figC_regional_trends_all_species.png){#fig-regocc}
+![Regional estimated occupancy trends for 15 bat species in British Columbia (2017--2025). Points show the posterior mean of the linear change in occupancy probability per year, and bars show 95% credible intervals. A value of 0.01 means occupancy rose by an average of 1 percentage point per year. The dashed line at zero marks no change. Intervals that don’t cross zero indicate a significant linear trend. Colour shows a separate comparison: whether occupancy in 2025 differed from 2017. Green indicates that 2025 occupancy was higher than 2017 (P\>= 0.95), red that it was lower (P\>= 0.95), and grey that the evidence for a difference was weak. The two summaries can disagree when occupancy changes non-linearly between the end years.](Figures/DOccupancy/figC_regional_trends_all_species.png){#fig-regocc}
 
 ::: {.content-visible when-format="html"}
 To show how occupancy varied across space and time, we mapped the model-estimated probability of occupancy at each site for every year from 2017 to 2025 (@fig-occslider). The map lets readers select a species and move through the years to see where occupancy has changed. Each point's colour shows the model's estimate of for yearly probability of occupancy, while its shape shows whether the species was detected that year (circle) or not (triangle). Because the occupancy model accounts for imperfect detection, a site where a species was not detected can still have a high estimated probability of occupancy. This is especially likely for species that are hard to detect acoustically, or at sites with few survey nights in a given year. The map therefore shows where a species was likely present, not just where it was recorded.
+
+The occupancy estimates in this report come only from acoustic data. Acoustic monitoring works well for tracking bat activity across large areas, but it has limits for species-level identification: several species in British Columbia have similar echolocation calls, and even manually vetted recordings can be misclassified. The occupancy models also predict occupancy probability from site and landscape covariates, so a site can show a high predicted probability where a species has never been detected. For both reasons, an acoustic detection or a high occupancy probability outside a species’ known range should not be read as evidence of range expansion. These results are best used to flag places for targeted follow-up sampling. Confirming that a species occurs beyond its known range requires capture records with species identification in hand, and ideally supporting documentation such as photographs, and genetic samples. We recommend that partners use these maps to prioritize capture effort, not as range records on their own.
 :::
 
 ```{r}
 #| label: fig-occslider
-#| fig-cap: "Probability of occupancy per site by year for 15 bat species in British Columbia with reliable occupancy estimates. Use the buttons to switch species and the slider to change year. Circles = detected; triangles = not detected that year; colour = model inference for probability of occupancy."
+#| fig-cap: "Probability of occupancy per site by year for 15 bat species in British Columbia with reliable occupancy estimates. Use the buttons to switch species and the slider to change year. Circles = acoustically detected; triangles = not detected that year; colour = model inference for probability of occupancy. Detections or high occupancy probability outside a species’ known range flag places for follow-up sampling. They do not confirm range expansion, which requires capture records."
 #| echo: false
 #| warning: false
 #| message: false
@@ -1482,11 +1498,11 @@ Because the dynamic occupancy model estimates detection probability separately f
 
 Species ranges across the project period (2016--2025) remain broadly stable, with no grid cells showing conspicuous or sustained absences of previously detected species. In 2025 there was a normal variation in the disctribution of species detections across the province, but three species are worth highlighting:
 
--   **Northern Myotis** was detected for the first time in three grid cells (20330, 218282, and 89962) in the southern Kootenay region. These cells lie at the southern edge of the species' known range, and the detections may indicate a small range expansion. Capture or genetic (guano) surveys will be needed to confirm its presence.
+- **Northern Myotis** was detected for the first time in three grid cells (20330, 218282, and 89962) in the southern Kootenay region. These cells lie at the southern edge of the species' known range, and the detections may indicate a small range expansion. Capture or genetic (guano) surveys will be needed to confirm its presence.
 
--   **Long-legged myotis** was detected at fewer sites in 2025 (76 sites across 39 grid cells) than in 2024 (85 sites across 42 grid cells). Most of the decline was in the South Coastal Region: among sites surveyed in both years, detections fell from 18 sites to 12, with 7 sites losing the species and 1 gaining it. Year-to-year turnover in site-level detections is common for most species in the program, so this decline likely reflects natural variation rather than a population change. However, the proportion of sites with detections has now declined for two consecutive years, so this species should be monitored closely in future years.
+- **Long-legged myotis** was detected at fewer sites in 2025 (76 sites across 39 grid cells) than in 2024 (85 sites across 42 grid cells). Most of the decline was in the South Coastal Region: among sites surveyed in both years, detections fell from 18 sites to 12, with 7 sites losing the species and 1 gaining it. Year-to-year turnover in site-level detections is common for most species in the program, so this decline likely reflects natural variation rather than a population change. However, the proportion of sites with detections has now declined for two consecutive years, so this species should be monitored closely in future years.
 
--   **Eastern red bat** detections increased in the Kootenay and Okanagan regions in 2025. The species was detected in 17 grid cells, the most to date, including four with no previous detections (111466, 243562, 194666, and 186330). Although many knowledge gaps remain for this species, these results continue to support a westward range expansion [@solick2020Distributions]. In contrast, eastern red bat was not detected in the South Coastal Region in 2025 after being recorded there every year from 2021 to 2024. Its calls overlap substantially with those of little brown Myotis, making diagnostic recordings difficult to obtain, so this apparent absence may partly reflect the difficulty of confirming the species acoustically rather than a true loss.
+- **Eastern red bat** detections increased in the Kootenay and Okanagan regions in 2025. The species was detected in 17 grid cells, the most to date, including four with no previous detections (111466, 243562, 194666, and 186330). Although many knowledge gaps remain for this species, these results continue to support a westward range expansion [@solick2020Distributions]. In contrast, eastern red bat was not detected in the South Coastal Region in 2025 after being recorded there every year from 2021 to 2024. Its calls overlap substantially with those of little brown Myotis, making diagnostic recordings difficult to obtain, so this apparent absence may partly reflect the difficulty of confirming the species acoustically rather than a true loss.
 
 ## Trend analyses
 
@@ -1555,11 +1571,11 @@ Field crews across British Columbia continue to reliably collect recordings for 
 
 The BC NABat program has yielded a large and robust acoustic dataset that provides solid baseline information on distribution of 15 resident BC bat species. The data that has been collected so far are an invaluable reference point for BC's bat distributions and activity that improve with each additional year of monitoring. Key considerations for the future of the program include:
 
--   **Manual Verification Efficiency.** For many years, the program manually verified 100% of acoustic recordings. As the program continues to expand, this level of effort is no longer sustainable, and manual vetting was reduced to 50% of recordings following the results of @stratton2022Coupling. Since 2023, manual verification has been used only to confirm species presence, while activity metrics are based on automated Kaleidoscope classifications. For the occupancy analyses, manual verification is only needed to confirm species presence at each site and to remove false positive IDs. The additional verification the program currently completes is valuable for maintaining a clean dataset that can be used to evaluate how vetting effort affects results, as it already has been in @stratton2022Coupling. However, it is not required for the analyses presented in this report. If the program needs to find efficiencies, reducing manual verification to the level required for occupancy analyses should be considered
+- **Manual Verification Efficiency.** For many years, the program manually verified 100% of acoustic recordings. As the program continues to expand, this level of effort is no longer sustainable, and manual vetting was reduced to 50% of recordings following the results of @stratton2022Coupling. Since 2023, manual verification has been used only to confirm species presence, while activity metrics are based on automated Kaleidoscope classifications. For the occupancy analyses, manual verification is only needed to confirm species presence at each site and to remove false positive IDs. The additional verification the program currently completes is valuable for maintaining a clean dataset that can be used to evaluate how vetting effort affects results, as it already has been in @stratton2022Coupling. However, it is not required for the analyses presented in this report. If the program needs to find efficiencies, reducing manual verification to the level required for occupancy analyses should be considered
 
--   **Efficiencies in monitoring.** Grid leaders should continue to be encouraged to use Survey123 to streamline site deployment; in 2024 and 2025 this platform was not used consistently across all grids. Using it also helps ensure that metadata are consistent and complete. In 2026 we can also examine efficiencies in weather data collection, specifically evaluating whether continued use of on-site temperature and humidity loggers yields results comparable to weather data drawn from the nearest weather stations.
+- **Efficiencies in monitoring.** Grid leaders should continue to be encouraged to use Survey123 to streamline site deployment; in 2024 and 2025 this platform was not used consistently across all grids. Using it also helps ensure that metadata are consistent and complete. In 2026 we can also examine efficiencies in weather data collection, specifically evaluating whether continued use of on-site temperature and humidity loggers yields results comparable to weather data drawn from the nearest weather stations.
 
--   **Adding and maintaining grid cells.** Changes in priorities and budgets have reduced repeat visits at some grid cells across the province. Supporting continued sampling at established grid cells is key to tracking population changes over time, especially given the imminent threat of WNS. Collaboration with other agencies and organizations can help sustain monitoring at existing grid cells and expand it to new ones. One approach being explored by the NNW Bat Hub is engaging industry partners, such as those in the mining, forestry, and wind energy sectors, in coordinated monitoring within their operating areas, with data contributed both to the hub and to the broader NABat effort. These partnerships may be easier to establish where regulatory frameworks support them, for example by requiring that bat monitoring data collected for industry projects be submitted to the hub and NABat.
+- **Adding and maintaining grid cells.** Changes in priorities and budgets have reduced repeat visits at some grid cells across the province. Supporting continued sampling at established grid cells is key to tracking population changes over time, especially given the imminent threat of WNS. Collaboration with other agencies and organizations can help sustain monitoring at existing grid cells and expand it to new ones. One approach being explored by the NNW Bat Hub is engaging industry partners, such as those in the mining, forestry, and wind energy sectors, in coordinated monitoring within their operating areas, with data contributed both to the hub and to the broader NABat effort. These partnerships may be easier to establish where regulatory frameworks support them, for example by requiring that bat monitoring data collected for industry projects be submitted to the hub and NABat.
 
 {{< pagebreak >}}
 
