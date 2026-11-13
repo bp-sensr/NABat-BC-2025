@@ -738,15 +738,63 @@ col_names <- c("Species", rep(c("Estimate ± 95%CI", "P-value"), length(regions)
 #| eval: true
 #| warning: false
 #| message: false
-#site-year summary for interactive slider maps code
-#this creates a map that can go between species and show the slider maps with P(occupancy for all the sites where the species was detected)
 library(dplyr)
 library(plotly)
+library(sf)
 
 old_tojson <- options(htmlwidgets.TOJSON_ARGS = NULL)
 
+# ---------------------------------------------------------------------------
+# NEW: read one species range shapefile and turn it into lon/lat vectors
+#      (NA-separated rings) that a scattergeo "toself" fill can draw.
+# ---------------------------------------------------------------------------
+read_range_coords <- function(sp, range_path, lon_lim, lat_lim,
+                              simplify_m = 2000) {
+  f <- file.path(range_path, paste0(sp, ".shp"))
+  if (!file.exists(f)) {
+    message("No range shapefile for ", sp, " (looked for ", f, ")")
+    return(NULL)
+  }
+  
+  s2_old <- sf::sf_use_s2(FALSE)               # planar ops for the crop
+  on.exit(sf::sf_use_s2(s2_old), add = TRUE)
+  
+  crop_box <- sf::st_bbox(c(xmin = lon_lim[1], xmax = lon_lim[2],
+                            ymin = lat_lim[1], ymax = lat_lim[2]),
+                          crs = sf::st_crs(4326))
+  
+  r <- sf::st_read(f, quiet = TRUE) |>
+    sf::st_zm(drop = TRUE) |>
+    sf::st_transform(4326) |>
+    sf::st_make_valid() |>
+    sf::st_crop(crop_box) |>                    # keep only the area near BC/SE AK
+    sf::st_transform(3005) |>                   # BC Albers (metres) for simplifying
+    sf::st_union() |>
+    sf::st_simplify(dTolerance = simplify_m, preserveTopology = TRUE) |>
+    sf::st_transform(4326)
+  
+  if (length(r) == 0 || all(sf::st_is_empty(r))) return(NULL)
+  r <- sf::st_collection_extract(r, "POLYGON")
+  if (length(r) == 0) return(NULL)
+  
+  xy <- as.data.frame(sf::st_coordinates(r))
+  # Keep exterior rings only (L1 == 1); holes would otherwise be filled too
+  xy <- xy[xy$L1 == 1, ]
+  grp_cols <- setdiff(grep("^L", names(xy), value = TRUE), "L1")
+  grp <- do.call(paste, c(xy[grp_cols], sep = "_"))
+  pieces <- split(xy[, c("X", "Y")], factor(grp, levels = unique(grp)))
+  
+  list(
+    lon = unlist(lapply(pieces, function(d) c(d$X, NA)), use.names = FALSE),
+    lat = unlist(lapply(pieces, function(d) c(d$Y, NA)), use.names = FALSE)
+  )
+}
+
 make_occ_species_map <- function(species,
-                                 path   = "Data/Analyzed/OccupancyTables/") {                      # NEW
+                                 path       = "Data/Analyzed/OccupancyTables/",
+                                 range_path = "Data/Mapping/SppRanges",           
+                                 range_fill = "rgba(49,130,189,0.15)",         
+                                 range_line = "rgba(49,130,189,0.7)") {        
   pal_hex <- RColorBrewer::brewer.pal(9, "OrRd")
   pal_fun <- scales::col_numeric(pal_hex, domain = c(0, 1), na.color = "#bdbdbd")
   
@@ -770,20 +818,20 @@ make_occ_species_map <- function(species,
         "<br>Year: ", year,
         "<br>", status, " (", n_visits, " visits)",
         "<br>P(occupied): ", sprintf("%.2f", p_occupied),
-        "<br>\u03c8 expected: ",
-        sprintf("%.2f [%.2f\u2013%.2f]", psi_expected, psi_expected_lo95, psi_expected_hi95)
+        "<br>ψ expected: ",
+        sprintf("%.2f [%.2f–%.2f]", psi_expected, psi_expected_lo95, psi_expected_hi95)
       )
     ) |>
     arrange(sp_code, year, site)
   
-  # NEW: drop any species with no surveyed rows (avoids empty menu entries / min() of nothing)
   species <- species[names(species) %in% unique(occ_all$sp_code)]
   
   lon_rng <- range(occ_all$long, na.rm = TRUE) + c(-1, 1)
   lat_rng <- range(occ_all$lat,  na.rm = TRUE) + c(-0.5, 0.5)
   off_lat <- 0; off_lon <- 0
+  first_sp <- names(species)[1]
   
-  p <- plot_ly() |>                                   
+  p <- plot_ly() |>
     add_trace(
       type = "scattergeo", mode = "markers",
       lat = off_lat, lon = off_lon, hoverinfo = "skip", showlegend = FALSE,
@@ -805,13 +853,36 @@ make_occ_species_map <- function(species,
                             line = list(color = "#4d4d4d", width = 1)))
   n_fixed <- 3
   
+  # ---- NEW: range polygons (one trace per species), drawn under the points ----
+  # Crop a bit wider than the view so panning/zooming out still shows the range
+  ranges <- lapply(names(species), read_range_coords,
+                   range_path = range_path,
+                   lon_lim = lon_rng + c(-10, 10),
+                   lat_lim = lat_rng + c(-5, 5))
+  names(ranges) <- names(species)
+  ranges   <- ranges[!vapply(ranges, is.null, logical(1))]
+  range_sp <- names(ranges)
+  
+  for (sp in range_sp) {
+    p <- p |> add_trace(
+      type = "scattergeo", mode = "lines",
+      lon = ranges[[sp]]$lon, lat = ranges[[sp]]$lat,
+      fill = "toself", fillcolor = range_fill,
+      line = list(color = range_line, width = 1),
+      name = "Species range", legendgroup = "range",
+      showlegend = TRUE,              # only the visible one appears in the legend
+      hoverinfo = "skip",
+      visible = sp == first_sp
+    )
+  }
+  # ---------------------------------------------------------------------------
+  
   key <- occ_all |> distinct(sp_code, year) |>
     filter(sp_code %in% names(species)) |>
     mutate(sp_code = factor(sp_code, levels = names(species))) |>
     arrange(sp_code, year) |>
     mutate(sp_code = as.character(sp_code))
   
-  first_sp <- names(species)[1]
   first_yr <- min(key$year[key$sp_code == first_sp])
   
   for (i in seq_len(nrow(key))) {
@@ -827,7 +898,9 @@ make_occ_species_map <- function(species,
     )
   }
   
+  # NEW: visibility = fixed traces, then range traces, then site-year traces
   vis <- function(sp, yr) as.list(c(rep(TRUE, n_fixed),
+                                    range_sp == sp,
                                     key$sp_code == sp & key$year == yr))
   
   slider_for <- function(sp) {
@@ -845,16 +918,16 @@ make_occ_species_map <- function(species,
   
   buttons <- lapply(names(species), function(sp) {
     y1 <- min(key$year[key$sp_code == sp])
-    list(label = paste0(sp, " \u2013 ", species[[sp]]),             # NEW: code + common name
+    list(label = paste0(sp, " – ", species[[sp]]),
          method = "update",
          args = list(list(visible = vis(sp, y1)),
                      list(sliders = slider_for(sp))))
   })
   
   p |> layout(
-    margin = list(t = 50, b = 80, l = 10, r = 10),                   # NEW: tighter margins
+    margin = list(t = 50, b = 80, l = 10, r = 10),
     updatemenus = list(list(
-      type = "dropdown",                                             # NEW: dropdown, not buttons
+      type = "dropdown",
       active = 0, showactive = TRUE,
       x = 0, xanchor = "left", y = 1.06, yanchor = "top",
       bgcolor = "white", bordercolor = "#9e9e9e",
@@ -862,7 +935,7 @@ make_occ_species_map <- function(species,
     )),
     sliders = slider_for(first_sp),
     geo = list(
-      domain = list(x = c(0, 1), y = c(0, 1)),                       # NEW: map fills the plot area
+      domain = list(x = c(0, 1), y = c(0, 1)),
       scope = "north america", resolution = 50,
       projection = list(type = "mercator"),
       showland = TRUE,  landcolor  = "#f7f7f7",
