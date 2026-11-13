@@ -34,6 +34,7 @@ format:
         \usepackage{placeins}
         \usepackage{float}
         \usepackage{needspace}
+        \usepackage{colortbl}
 date: last-modified
 author: 
   - name: "Camila Hurtado"
@@ -1398,7 +1399,8 @@ kable(merged_table %>% select(Species, stationary_trend, stationary_p, transect_
   column_spec(2, bold = ifelse(!is.na(merged_table$stationary_pval) & merged_table$stationary_pval < 0.05, TRUE, FALSE)) %>%
   column_spec(3, bold = ifelse(!is.na(merged_table$stationary_pval) & merged_table$stationary_pval < 0.05, TRUE, FALSE)) %>%
   column_spec(4, bold = ifelse(!is.na(merged_table$transect_pval) & merged_table$transect_pval < 0.05, TRUE, FALSE)) %>%
-  column_spec(5, bold = ifelse(!is.na(merged_table$transect_pval) & merged_table$transect_pval < 0.05, TRUE, FALSE))
+  column_spec(5, bold = ifelse(!is.na(merged_table$transect_pval) & merged_table$transect_pval < 0.05, TRUE, FALSE)) %>%
+  row_spec(seq(2, nrow(merged_table), by = 2), background = "#F2F2F2")
 ```
 
 At the provincial scale, no species showed a significant negative trend in either the stationary or the transect models. Stationary activity increased significantly for five species: pallid bat, Townsend's big-eared bat, big brown bat, long-eared Myotis and Yuma Myotis (@tbl-provtrend) . In the transect models, only little brown Myotis and long-legged Myotis showed significant positive trends.
@@ -1430,13 +1432,7 @@ if (is_html) {
     column_spec(c(2, 4, 6, 8), width = "3cm") %>%
     column_spec(c(3, 5, 7, 9), width = "1.5cm") %>%
     kable_styling(font_size = 9, full_width = TRUE) %>%
-    scroll_box(width = "100%", extra_css = "overflow-x: auto; min-width: 900px;")%>%
-    footnote(
-      general = paste0(excl_symbol, " Species detected in this region, but the model was ","excluded due to poor fit. Blank cells indicate the species was not modelled in that region."),
-      general_title = "",
-      footnote_as_chunk = TRUE,
-      threeparttable = TRUE
-    )
+    scroll_box(width = "100%", extra_css = "overflow-x: auto; min-width: 900px;")
   
 } else {
   regions_top    <- c("Kootenay Region", "Northern Region")
@@ -1474,7 +1470,7 @@ if (is_html) {
     tbl <- tbl %>%
       cols_label(.list = rename_list) %>%
       cols_width(
-        Species ~ px(130),
+        #Species ~ px(140),
         ends_with("_est") ~ px(110),
         ends_with("_p")   ~ px(60)
       ) %>%
@@ -1485,6 +1481,10 @@ if (is_html) {
       tab_options(
         table.font.size = px(14),
         data_row.padding = px(2)
+      )%>%
+      tab_style(
+        style     = cell_fill(color = "#F2F2F2"),
+        locations = cells_body(rows = seq(2, nrow(sub_data), by = 2))
       )
     
     return(tbl)
@@ -1503,6 +1503,8 @@ if (is_html) {
 ```
 
 ## Dynamic Occupancy Models
+
+### Overall occupancy trends
 
 We assessed occupancy trends with two complementary metrics: (1) the mean yearly change in occupancy from 2017 to 2025, estimated as the linear slope of occupancy on year, and (2) the posterior probability that occupancy in 2025 was higher than in 2017. A slope whose 95% credible interval excluded zero was taken as evidence of a consistent linear trend. A posterior probability ≥ 0.95 was taken as strong evidence of an increase between the end years, and ≤ 0.05 as strong evidence of a decline. @fig-sppocc shows both metrics: points and bars show the slope, and colour shows the end-year comparison.
 
@@ -1526,15 +1528,23 @@ In the South Coastal Region, hoary bat had a negative mean yearly trend and a lo
 
 ![Regional estimated occupancy trends for 15 bat species in British Columbia (2017--2025). Points show the posterior mean of the linear change in occupancy probability per year, and bars show 95% credible intervals. A value of 0.01 means occupancy rose by an average of 1 percentage point per year. The dashed line at zero marks no change. Intervals that don’t cross zero indicate a significant linear trend. Colour shows a separate comparison: whether occupancy in 2025 differed from 2017. Green indicates that 2025 occupancy was higher than 2017 (P\>= 0.95), red that it was lower (P\>= 0.95), and grey that the evidence for a difference was weak. The two summaries can disagree when occupancy changes non-linearly between the end years.](Figures/DOccupancy/figC_regional_trends_all_species.png){#fig-regocc}
 
+### Site specific occupancy
+
 ::: {.content-visible when-format="html"}
-To show how occupancy varied across space and time, we mapped the model-estimated probability of occupancy at each site for every year from 2017 to 2025 (@fig-occslider). The map lets readers select a species and move through the years to see where occupancy has changed. Each point's colour shows the model's estimate of for yearly probability of occupancy, while its shape shows whether the species was detected that year (circle) or not (triangle). Because the occupancy model accounts for imperfect detection, a site where a species was not detected can still have a high estimated probability of occupancy. This is especially likely for species that are hard to detect acoustically, or at sites with few survey nights in a given year. The map therefore shows where a species was likely present, not just where it was recorded.
+To show how species specific occupancy varied across space and time, we mapped the model-estimated probability of occupancy at each site for every year from 2017 to 2025 (@fig-occslider). The map lets readers select a species and move through the years to see where occupancy has changed. Each point's colour shows the model's estimate of for yearly probability of occupancy, while its shape shows whether the species was detected that year (circle) or not (triangle). Because the occupancy model accounts for imperfect detection, a site where a species was not detected can still have a high estimated probability of occupancy. This is especially likely for species that are hard to detect acoustically, or at sites with few survey nights in a given year. The map therefore shows where a species was likely present, not just where it was recorded.
+
+The occupancy estimates in this report come only from acoustic data. Acoustic monitoring works well for tracking bat activity across large areas, but it has limits for species-level identification: several species in British Columbia have similar echolocation calls, and even manually vetted recordings can be misclassified. The occupancy models also predict occupancy probability from site and landscape covariates, so a site can show a high predicted probability where a species has never been detected. For both reasons, an acoustic detection or a high occupancy probability outside a species’ known range should not be read as evidence of range expansion. These results are best used to flag places for targeted follow-up sampling. Confirming that a species occurs beyond its known range requires capture records with species identification in hand, and ideally supporting documentation such as photographs, and genetic samples. We recommend that partners use these maps to prioritize capture effort, not as range records on their own.
+:::
+
+::: {.content-visible when-format="pdf"}
+To show how species specific occupancy varied across space and time, we mapped the model-estimated probability of occupancy at each site for every year from 2017 to 2025 ([Appendix A] - P(occupancy) by site and year). For each species, the maps show occupancy estimates for all years of sampling across each site. Each site's colour shows the model's estimate of for yearly probability of occupancy, while its shape shows whether the species was detected that year (circle) or not (triangle). Because the occupancy model accounts for imperfect detection, a site where a species was not detected can still have a high estimated probability of occupancy. This is especially likely for species that are hard to detect acoustically, or at sites with few survey nights in a given year. The maps therefore show where a species was likely present, not just where it was recorded.
 
 The occupancy estimates in this report come only from acoustic data. Acoustic monitoring works well for tracking bat activity across large areas, but it has limits for species-level identification: several species in British Columbia have similar echolocation calls, and even manually vetted recordings can be misclassified. The occupancy models also predict occupancy probability from site and landscape covariates, so a site can show a high predicted probability where a species has never been detected. For both reasons, an acoustic detection or a high occupancy probability outside a species’ known range should not be read as evidence of range expansion. These results are best used to flag places for targeted follow-up sampling. Confirming that a species occurs beyond its known range requires capture records with species identification in hand, and ideally supporting documentation such as photographs, and genetic samples. We recommend that partners use these maps to prioritize capture effort, not as range records on their own.
 :::
 
 ```{r}
 #| label: fig-occslider
-#| fig-cap: "Probability of occupancy per site by year for 15 bat species in British Columbia with reliable occupancy estimates. Use the buttons to switch species and the slider to change year. Circles = acoustically detected; triangles = not detected that year; colour = model inference for probability of occupancy. Detections or high occupancy probability outside a species’ known range flag places for follow-up sampling. They do not confirm range expansion, which requires capture records."
+#| fig-cap: "Probability of occupancy per site by year for 15 bat species in British Columbia with reliable occupancy estimates. Use the buttons to switch species and the slider to change year. Circles = acoustically detected; triangles = not detected that year; colour = model inference for probability of occupancy. Detections or high occupancy probability outside a species’ known range flag places for follow-up sampling. They do not confirm range expansion, which requires capture records. Species range data from IUCN (International Union for Conservation of Nature) 2026"
 #| echo: false
 #| warning: false
 #| message: false
@@ -1974,7 +1984,5 @@ if (is_pdf) {
   }
 }
 ```
-
-# Appendix C
 
 # Literature Cited
