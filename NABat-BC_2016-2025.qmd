@@ -14,6 +14,7 @@ format:
     toc-location: left
     css: styles.css
     include-after-body: collapsible.html
+    lightbox: auto
   pdf:
     tbl-pos: "H"
     toc: true
@@ -1208,8 +1209,11 @@ make_trend_table <- function(sp,
     cols_align(align = "left",   columns = Scope) %>%
     cols_align(align = "center", columns = -Scope) %>%
     tab_options(
-      table.font.size  = px(14),
-      data_row.padding = px(2)
+      table.font.size         = px(14),
+      data_row.padding        = px(2),
+      heading.title.font.size = px(16),   # 1–2 sizes above the table text
+      heading.align           = "left",   # long captions read better left-aligned
+      latex.tbl.pos           = "H"       # keep the table where it is in the text
     )
   
   # grey stripe on every second row (skipped if the table has only one row)
@@ -1230,9 +1234,9 @@ make_trend_table <- function(sp,
 
 # Executive Summary
 
-The North American Bat Monitoring Program (NABat) is a multi-agency initiative administered by the US Geological Survey (USGS). In 2024, the North by Northwest (NNW) Bat Hub was formed by combining the former Alberta Hub and the BC and Southeast Alaska (BC-SE AK) Hub. The NNW Bat Hub leads NABat in British Columbia, with key support from provincial and state representatives and WCSC.
+The North by Northwest (NNW) Bat Hub was formed in 2024 to coordinate and lead acoustic bat monitoring in British Columbia, Alaska, and Alberta. The Hub contributes data to the North American Bat Monitoring Program (NABat) and develops region-specific models. It has key support from provincial and state representatives and operates as a collaboration among many partners.
 
-In 2025, 57 grid cells were monitored across British Columbia. Two complementary analyses, dynamic occupancy models and activity trend models, were used to evaluate population trends. Most species showed no discernible trend, suggesting bat populations in the province are generally stable. Little brown Myotis and western long-eared Myotis increased in both activity and occupancy, although the western long-eared Myotis increase may partly reflect improved detection since 2023. Fringed Myotis declined in occupancy, mainly in the Okanagan Region. Species ranges remained broadly stable, with northern Myotis and eastern red bat showing potential range expansions. Given growing threats to bat populations in BC, continued monitoring is essential to detect any changes in populations.
+In 2025, 57 grid cells were monitored across British Columbia. Two complementary analyses, dynamic occupancy models and activity trend models, were used to evaluate regional population trends. Most species showed no discernible trend, suggesting bat populations in the province are generally stable. Little brown Myotis and western long-eared Myotis increased in both activity and occupancy, although the western long-eared Myotis increase may partly reflect improved detection since 2023. Fringed Myotis declined in occupancy, mainly in the Okanagan Region. Species ranges remained broadly stable, with northern Myotis and eastern red bat showing potential range expansions. Given growing threats to bat populations in BC, continued monitoring is essential to detect any changes in populations.
 
 # Land Acknowledgement
 

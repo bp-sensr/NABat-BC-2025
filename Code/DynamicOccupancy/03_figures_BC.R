@@ -22,6 +22,9 @@
 library(ggplot2)
 library(dplyr)
 library(tidyr)
+library(sf)
+library(bcmaps)   
+#install.packages("bcmaps")
 
 # ============================================================================
 # SETTINGS
@@ -60,6 +63,47 @@ theme_occ <- theme_classic(base_size = 11) +
         strip.text = element_text(size = 10),
         plot.title = element_text(face = "bold"),
         plot.subtitle = element_text(size = 9, colour = "grey30"))
+
+# ============================================================================
+# SPECIES RANGES (for fig 7)
+# ============================================================================
+# One shapefile per species, named by 4-letter code (e.g. MYLU.shp).
+
+RANGE_DIR <- "C:/Users/cami/Documents/NABat-BC-2025/Data/Mapping/SppRanges"
+
+# Range data citation
+REF <- paste0("Species range data from: BC Conservation Data Centre. 2020. BC Bat Range Maps.\n",
+              "Available at: https://www2.gov.bc.ca/gov/content/environment/plants-animals-ecosystems/conservation-data-centre")
+
+RANGE_FILL <- "#3182bd"   # blue, so it doesn't compete with the OrRd point fill
+RANGE_LINE <- "#08519c"
+
+# BC boundary and map extent (shared by all species)
+bc_line <- bc_bound()                                                 # BC Albers (EPSG 3005)
+map_box <- st_bbox(st_buffer(st_as_sfc(st_bbox(bc_line)), 20000))    # BC + 20 km
+
+# Returns the range dissolved, in BC Albers, cropped to the map extent.
+# Returns NULL (with a message) if the shapefile is missing or doesn't overlap BC.
+read_range <- function(sp, range_dir = RANGE_DIR, box = map_box, simplify_m = 500) {
+  f <- file.path(range_dir, paste0(sp, ".shp"))
+  if (!file.exists(f)) {
+    message(sp, ": no range shapefile (looked for ", f, ")")
+    return(NULL)
+  }
+  r <- st_read(f, quiet = TRUE) |>
+    st_zm(drop = TRUE) |>
+    st_transform(3005) |>
+    st_make_valid() |>
+    st_union() |>
+    st_crop(box) |>
+    st_simplify(dTolerance = simplify_m, preserveTopology = TRUE)
+  
+  if (length(r) == 0 || all(st_is_empty(r))) {
+    message(sp, ": range does not overlap the BC map extent")
+    return(NULL)
+  }
+  st_sf(geometry = r)
+}
 
 # ============================================================================
 # PART 1. PER-SPECIES FIGURES AND TABLES
@@ -413,6 +457,7 @@ for (SPECIES in SPECIES_TO_PLOT) {
   # ============================================================================
   # 7. SITE-LEVEL OCCUPANCY
   # ============================================================================
+  # (bc_line, map_box and read_range() are set up once, before the loop)
   
   # --- p_occupied: posterior P(z = 1), conditional on the data ---
   p_occ <- colMeans(z_d)                       # [site, year]
@@ -500,40 +545,99 @@ for (SPECIES in SPECIES_TO_PLOT) {
     arrange(ever_detected)                     # detected sites drawn on top
   
   fig6 <- ggplot(map_df, aes(x = long, y = lat)) +
+    geom_sf(data = bc_line, inherit.aes = FALSE,
+            fill = NA, colour = "grey40", linewidth = 0.4) +
     geom_point(aes(fill = mean_p_occupied, shape = status),
                size = 3.2, colour = "grey25", stroke = 0.3, alpha = 0.9) +
     scale_shape_manual(values = c("Detected here" = 21, "Never detected" = 24), name = NULL) +
     scale_fill_distiller(palette = "OrRd", direction = 1, limits = c(0, 1),
                          name = "Mean\nP(occupied)") +
-    coord_quickmap() +
+    coord_sf(crs = 3005, default_crs = 4326) +
     labs(title = paste0(sp_title, ": mean probability of occupancy per site, ",
                         min(years), "\u2013", max(years)),
-         subtitle = "Averaged over surveyed years only. Colour on a triangle is model inference, not observation.",
+         subtitle = paste0("Averaged over surveyed years only. Colour on a triangle is model inference, not observation.\n",
+                           "Detections or high occupancy probability outside a species’ known range flag places for follow-up sampling. They do not confirm range expansion, which requires capture records."),
          x = "Longitude", y = "Latitude") +
     theme_occ
   
   ggsave(file.path(sp_fig_dir, paste0("fig6_site_map_mean_", SPECIES, ".png")),
          fig6, width = 9, height = 8, dpi = 300)
   
-  # --- fig7: map by year, surveyed site-years only ---
+  # --- fig7: map by year, surveyed site-years only, with species range ---
   map_year <- site_year %>%
     filter(surveyed) %>%
     mutate(status = ifelse(detected == 1, "Detected", "Not detected")) %>%
     arrange(year, detected)
   
+  sp_range <- read_range(SPECIES)
+  
+  # Range layer (drawn first, so BC outline and points sit on top). It has no
+  # year column, so it repeats in every year panel.
+  range_layer <- if (!is.null(sp_range)) list(
+    geom_sf(data = sp_range, inherit.aes = FALSE,
+            aes(colour = "Species range"),
+            fill = RANGE_FILL, alpha = 0.15, linewidth = 0.3),
+    scale_colour_manual(values = c("Species range" = RANGE_LINE), name = NULL,
+                        guide = guide_legend(order = 2,
+                                             override.aes = list(fill = RANGE_FILL, alpha = 0.3,
+                                                                 linewidth = 0.4)))
+  ) else NULL
+  
+  range_note <- if (is.null(sp_range)) {
+    "No range map available for this species.\n"
+  } else {
+    "Blue shading = known species range (BC Conservation Data Centre).\n"
+  }
+  range_caption <- if (is.null(sp_range)) NULL else REF
+  
   fig7 <- ggplot(map_year, aes(x = long, y = lat)) +
+    range_layer +
+    geom_sf(data = bc_line, inherit.aes = FALSE,
+            fill = NA, colour = "grey40", linewidth = 0.25) +
     geom_point(aes(fill = p_occupied, shape = status),
                size = 1.9, colour = "grey30", stroke = 0.2, alpha = 0.9) +
     facet_wrap(~ year, ncol = 3) +
-    scale_shape_manual(values = c("Detected" = 21, "Not detected" = 24), name = NULL) +
+    scale_shape_manual(values = c("Detected" = 21, "Not detected" = 24), name = NULL,
+                       guide = guide_legend(order = 1,
+                                            override.aes = list(size = 4.5, fill = "grey60",
+                                                                stroke = 0.4))) +
     scale_fill_distiller(palette = "OrRd", direction = 1, limits = c(0, 1),
-                         name = "P(occupied)") +
-    coord_quickmap() +
+                         breaks = seq(0, 1, 0.25),
+                         labels = c("0", "0.25", "0.5", "0.75", "1"),
+                         name = "P(occupied)",
+                         guide = guide_colourbar(order = 3,
+                                                 title.position = "top",
+                                                 title.hjust = 0.5,
+                                                 barwidth  = unit(9, "cm"),
+                                                 barheight = unit(0.5, "cm"),
+                                                 frame.colour = "grey40",
+                                                 ticks.colour = "grey40")) +
+    # Fix the extent to BC so a range that extends far outside BC doesn't zoom the map out
+    coord_sf(crs = 3005, default_crs = 4326,
+             xlim = map_box[c("xmin", "xmax")], ylim = map_box[c("ymin", "ymax")],
+             expand = FALSE) +
     labs(title = paste0(sp_title, ": P(occupancy) by site and year"),
-         subtitle = "Surveyed site-years only. Triangles = not detected that year; their colour is model inference.",
+         subtitle = paste0(range_note,
+                           "Colour on a triangle is model inference, not observation.\n",
+                           "Detections or high occupancy probability outside a species’ known range should be used to flag places for follow-up sampling.\n",
+                           "These results are based on acoustic sampling and do not confirm range expansion, which requires capture records."),
+         caption = range_caption,
          x = NULL, y = NULL) +
     theme_occ +
-    theme(legend.position = "bottom", axis.text = element_text(size = 7))
+    theme(text          = element_text(size = 12),
+          plot.title    = element_text(size = 16, face = "bold"),
+          plot.subtitle = element_text(size = 12, colour = "grey30"),
+          plot.caption  = element_text(size = 10, colour = "grey40", hjust = 0),
+          axis.title    = element_text(size = 13),
+          axis.text     = element_text(size = 12, colour = "black"),
+          strip.text    = element_text(size = 13),
+          legend.text   = element_text(size = 12),
+          legend.position = "bottom", 
+          legend.title  = element_text(size = 13),
+          legend.key.size = unit(0.8, "cm"),
+          legend.spacing.x = unit(1.5, "cm"),
+          legend.box.spacing = unit(0.3, "cm"))
+  
   
   ggsave(file.path(sp_fig_dir, paste0("fig7_site_map_by_year_", SPECIES, ".png")),
          fig7, width = 11, height = 12, dpi = 300)
@@ -641,7 +745,7 @@ for (SPECIES in SPECIES_TO_PLOT) {
   
   # free memory before the next species
   rm(fit, sl, z_d, psi_exp, psi_exp_lo, psi_exp_hi, site_mean_draws,
-     lin_psi, lin_gam, lin_phi, col_bc, per_bc, col_r, per_r, psi_regw)
+     lin_psi, lin_gam, lin_phi, col_bc, per_bc, col_r, per_r, psi_regw, sp_range)
   gc()
 }
 
@@ -718,9 +822,10 @@ figB <- ggplot(bc_trend, aes(x = slope, y = species, colour = direction)) +
   scale_colour_manual(values = c("Increase (P \u2265 0.95)" = "#1b7837",
                                  "Decrease (P \u2265 0.95)" = "#b2182b",
                                  "Uncertain" = "grey50"), name = NULL) +
-  labs(title = "BC-wide occupancy trend by species",
-       subtitle = paste0("Linear slope of occupancy on year (95% CI), all sites. Colour: posterior probability that ",
-                         "occupancy in the last year exceeds the first."),
+  labs(title = "Province wide occupancy trend by species",
+       subtitle = paste0("Two different trend metrics presented:\n",
+                         "\u2022 Points and lines: posterior mean linear change in occupancy per year (95% credible interval).\n",
+                         "\u2022 Colour: posterior probability that occupancy in the last year is higher than in the first year.\n"),
        x = "Change in occupancy per year", y = NULL) +
   theme_occ +
   theme(legend.position = "bottom")
@@ -731,6 +836,7 @@ ggsave(file.path(all_fig_dir, "figB_bc_trends_all_species.png"),
 # --- C. Regional occupancy trends, all species ---
 # Species-region combinations with zero detections are dropped: there is no
 # trend to estimate in a region where the species was never recorded.
+
 reg_trend <- trend_all %>%
   filter(!grepl("^BC", scope), n_detections > 0) %>%
   mutate(direction = case_when(p_increase >= 0.95 ~ "Increase (P \u2265 0.95)",
@@ -738,26 +844,54 @@ reg_trend <- trend_all %>%
                                TRUE ~ "Uncertain"))
 reg_trend$species <- factor(reg_trend$species, levels = rev(sort(unique(reg_trend$species))))
 
+# Panel order: fills row by row in a 2 x 2 grid
+# (top: Kootenay, Northern; bottom: South Coastal, Okanagan)
+region_order <-  c("Northern Region","Kootenay Region", "South Coastal Region", "Okanagan Region")
+
+# Stop if any name doesn't match the data exactly (spelling, capitals, spaces)
+missing_reg <- setdiff(unique(reg_trend$scope), region_order)
+if (length(missing_reg) > 0) stop("Region names not in region_order: ",
+                                  paste(missing_reg, collapse = ", "))
+
+reg_trend$scope <- factor(reg_trend$scope, levels = region_order)
+
+# Shared x-axis with figB: covers every CI in the BC-wide and regional trends
+bc_rows    <- trend_all[trend_all$scope == "BC (all sites)", ]
+trend_xlim <- range(c(bc_rows$slope_lo95,   bc_rows$slope_hi95,
+                      reg_trend$slope_lo95, reg_trend$slope_hi95), na.rm = TRUE)
+trend_xlim[2] <- trend_xlim[2] + 0.1 * diff(trend_xlim) 
+indent <- strrep("\u00a0", 6) 
+
 figC <- ggplot(reg_trend, aes(x = slope, y = species, colour = direction)) +
   geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
   geom_linerange(aes(xmin = slope_lo95, xmax = slope_hi95), linewidth = 0.6) +
   geom_point(size = 2) +
-  facet_wrap(~ scope, nrow = 1) +
+  facet_wrap(~ scope, ncol = 2, drop = FALSE) +
+  scale_x_continuous(breaks = pretty(trend_xlim, n = 5)) +
+  coord_cartesian(xlim = trend_xlim) +
   scale_colour_manual(values = c("Increase (P \u2265 0.95)" = "#1b7837",
                                  "Decrease (P \u2265 0.95)" = "#b2182b",
                                  "Uncertain" = "grey50"), name = NULL) +
   labs(title = "Regional occupancy trends by species",
        subtitle = paste0("Two different trend metrics presented:\n",
-                         "\u2022 Points and lines: posterior mean linear change in occupancy per year (95% credible interval).\n",
-                         "\u2022 Colour: posterior probability that occupancy in the last year is higher than in the first year.\n",
+                         indent, "\u2022 Points and lines: posterior mean linear change in occupancy per year (95% credible interval).\n",
+                         indent, "\u2022 Colour: posterior probability that occupancy in the last year is higher than in the first year.\n",
                          "Species with no detections in a region are omitted from that panel."),
        x = "Change in occupancy per year", y = NULL) +
-   theme_occ +
-  theme(legend.position = "bottom")
+  theme_occ +
+  theme(text          = element_text(size = 12),
+        plot.title    = element_text(size = 16, face = "bold"),
+        plot.subtitle = element_text(size = 12, colour = "grey30"),
+        axis.title    = element_text(size = 13),
+        axis.text     = element_text(size = 12, colour = "black"),
+        strip.text    = element_text(size = 13),
+        legend.text   = element_text(size = 12),
+        legend.position = "bottom", 
+        panel.spacing.x = unit(2, "lines"),
+        panel.spacing.y = unit(1.5, "lines"))
 
-ggsave(file.path(all_fig_dir, "figC_regional_trends_all_species.png"),
-       figC, width = 13, height = 6.5, dpi = 300)
-
+ggsave(file.path(all_fig_dir, "figC_regional_trends_all_species_increased size-v1.png"),
+       figC, width = 10, height = 11, dpi = 300)
 # --- B & C. Occupancy trends, all species (shared x-axis) ---
 trend_dir <- function(p) {
   case_when(p >= 0.95 ~ "Increase (P \u2265 0.95)",
@@ -821,73 +955,6 @@ figC <- ggplot(reg_trend, aes(x = slope, y = species, colour = direction)) +
 ggsave(file.path(all_fig_dir, "figC_regional_trends_all_species_SameAxis.png"),
        figC, width = 13, height = 6.5, dpi = 300)
 
-# --- B & C. Occupancy trends, all species (shared x-axis) ---
-trend_dir <- function(p) {
-  case_when(p >= 0.95 ~ "Increase (P \u2265 0.95)",
-            p <= 0.05 ~ "Decrease (P \u2265 0.95)",
-            TRUE      ~ "Uncertain")
-}
-trend_cols <- c("Increase (P \u2265 0.95)" = "#1b7837",
-                "Decrease (P \u2265 0.95)" = "#b2182b",
-                "Uncertain" = "grey50")
-
-bc_trend <- trend_all %>%
-  filter(scope == "BC (all sites)") %>%
-  mutate(direction = trend_dir(p_increase),
-         species = reorder(species, slope))
-
-# Species-region combinations with zero detections are dropped: there is no
-# trend to estimate in a region where the species was never recorded.
-reg_trend <- trend_all %>%
-  filter(!grepl("^BC", scope), n_detections > 0) %>%
-  mutate(direction = trend_dir(p_increase))
-reg_trend$species <- factor(reg_trend$species, levels = rev(sort(unique(reg_trend$species))))
-
-# One x-axis for both figures, covering every CI in either one
-trend_xlim   <- range(c(bc_trend$slope_lo95,  bc_trend$slope_hi95,
-                        reg_trend$slope_lo95, reg_trend$slope_hi95), na.rm = TRUE)
-trend_breaks <- pretty(trend_xlim, n = 5)
-trend_x <- list(
-  scale_x_continuous(breaks = trend_breaks),
-  coord_cartesian(xlim = trend_xlim)   # zooms without dropping any data
-)
-
-figB <- ggplot(bc_trend, aes(x = slope, y = species, colour = direction)) +
-  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
-  geom_linerange(aes(xmin = slope_lo95, xmax = slope_hi95), linewidth = 0.6) +
-  geom_point(size = 2.5) +
-  trend_x +
-  scale_colour_manual(values = trend_cols, name = NULL, drop = FALSE) +
-  labs(title = "Province wide occupancy trend by species",
-       subtitle = paste0("Two different trend metrics presented:\n",
-                         "\u2022 Points and lines: posterior mean linear change in occupancy per year (95% credible interval).\n",
-                         "\u2022 Colour: posterior probability that occupancy in the last year is higher than in the first year.\n"),
-       x = "Change in occupancy per year", y = NULL) +
-  theme_occ +
-  theme(legend.position = "bottom")
-
-ggsave(file.path(all_fig_dir, "figB_bc_trends_all_species_SameAxis.png"),
-       figB, width = 8, height = 6.5, dpi = 300)
-
-figC <- ggplot(reg_trend, aes(x = slope, y = species, colour = direction)) +
-  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
-  geom_linerange(aes(xmin = slope_lo95, xmax = slope_hi95), linewidth = 0.6) +
-  geom_point(size = 2) +
-  facet_wrap(~ scope, nrow = 1) +
-  trend_x +
-  scale_colour_manual(values = trend_cols, name = NULL, drop = FALSE) +
-  labs(title = "Regional occupancy trends by species",
-       subtitle = paste0("Two different trend metrics presented:\n",
-                           "\u2022 Points and lines: posterior mean linear change in occupancy per year (95% credible interval).\n",
-                           "\u2022 Colour: posterior probability that occupancy in the last year is higher than in the first year.\n",
-                         "Species with no detections in a region are omitted from that panel."),
-       x = "Change in occupancy per year", y = NULL) +
-  theme_occ +
-  theme(legend.position = "bottom")
-
-ggsave(file.path(all_fig_dir, "figC_regional_trends_all_species_SameAxis.png"),
-       figC, width = 13, height = 6.5, dpi = 300)
-
 # --- D. Occupancy in the final year, species x region ---
 # A compact picture of where each species is and isn't.
 last_year <- max(read.csv(file.path(TAB_DIR, "ALL_SPECIES_occupancy_trajectory.csv"))$year)
@@ -914,5 +981,3 @@ figD <- ggplot(heat, aes(x = scope, y = species, fill = mean)) +
 
 ggsave(file.path(all_fig_dir, "figD_occupancy_heatmap_all_species.png"),
        figD, width = 8, height = 6.5, dpi = 300)
-
-
