@@ -282,7 +282,7 @@ transect_covariates<- transect_covariates %>%
 #| warning: false
 #| message: false
 
-bc.cov.slope.summary.singlet <- read.csv("Data/Analyzed/ActivityTrends/bc.cov.estimates.singlet.csv")
+bc.cov.slope.summary.singlet <- read.csv("Data/Analyzed/ActivityTrends/bc.cov.estimates.singlet-v2.csv")
 bc.cov.slope.transect <- read.csv("Data/Analyzed/ActivityTrends/bc.transect.cov.estimates.csv")
 
 
