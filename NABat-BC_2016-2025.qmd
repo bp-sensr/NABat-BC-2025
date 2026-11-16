@@ -1874,6 +1874,10 @@ The BC NABat program has yielded a large and robust acoustic dataset that provid
 
 {{< pagebreak >}}
 
+# Acknowledgements
+
+The BC NABat program relies on partnerships across the province. Wildlife Conservation Society Canada did much of the foundational work to build the program and continues to give valuable guidance on keeping it going. We are also grateful to the many partners who have contributed their time, data, and dedication, including BC Community Bat Program; BC Ministry of Water, Land and Resource Stewardship; BC Parks; BW Gold Ltd.; Christina Lake Stewardship Society; Haida Gwaii Community Bat Program; Ktunaxa Nation Council; Kwadacha Nation; Lakelse Watershed Stewards Society; Lillooet Naturalist Society; Nature Conservancy of Canada; Okanagan Community Bat Program; Okanagan Nation Alliance; Parks Canada (including Pacific Rim National Park Reserve and Glacier and Mount Revelstoke National Parks); Peace Community Bat Program; Pemberton Wildlife Association; Salt Spring Conservancy; Saulteau First Nations; Skeena Community Bat Program; Slocan Lake Stewardship Society; Splitrock Environmental Sekw’el’was; Stewardship Pemberton Society; Tsay Keh Dene Nation; West Moberly First Nations; Yaq̓it ʔa·knuqⱡi’it First Nation; and Zonal Ecosystems and Wildlife Consultants. We would like to thank all of the volunteers and field technicians across these organizations whose efforts made the data collection possible.
+
 # Appendix A {#sec-AppendixA}
 
 ## Pallid bat (*Antrozous pallidus*) {#sec-ANPA}
