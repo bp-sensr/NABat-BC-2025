@@ -66,7 +66,7 @@ nocite: '@*'
 #  #Set to FALSE to count stationary detector sites only (drops mobile transects)
 #  include_transects <- TRUE
 # 
-#  raw <- read_excel("Data/Raw/AllYearActivitybyNight_2016-2025_BC_withCovariates.xlsx", sheet = "OccupancyKSP")
+#  raw <- read_excel("Data/Raw/AllYearActivitybyNight_2016-2025_v2_addedMissing2023.xlsx", sheet = "OccupancyKSP")
 # 
 #  bc_parks_cells <- c(986, 6202, 58842, 16426, 17706, 26170, 37274, 38442, 115322,
 #                      132650, 145578, 172090, 175354, 206394, 212906, 230186,
@@ -143,7 +143,7 @@ nocite: '@*'
 # # #only using full species ID not couplets
 #  sp_cols <- c("ANPA", "COTO", "EPFU", "EUMA", "LABO", "LACI", "LANO", "MYCA", "MYCI", "MYEV", "MYLU", "MYTH", "MYVO", "MYSE", "MYYU", "PAHE", "TABR")
 # 
-#  raw <- read_excel("Data/Raw/AllYearActivitybyNight_2016-2025_BC_withCovariates.xlsx", sheet = "Occupancy") #only confirmed results (man verification and/or 2 autoID agreement)
+#  raw <- read_excel("Data/Raw/AllYearActivitybyNight_2016-2025_v2_addedMissing2023.xlsx", sheet = "Occupancy") #only confirmed results (man verification and/or 2 autoID agreement)
 #  site_list <-raw %>%
 #     #Clean nightly data: one row per site x night
 #    mutate(year = lubridate::year(Night)) %>%
