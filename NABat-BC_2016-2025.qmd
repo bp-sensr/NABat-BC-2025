@@ -376,7 +376,7 @@ merged_table <- merged_table %>%
 #| message: false
 
 
-region.cov.slope.summary.singlet <- read.csv("Data/Analyzed/ActivityTrends/region.slope.summary.singlet.csv")
+region.cov.slope.summary.singlet <- read.csv("Data/Analyzed/ActivityTrends/region.slope.summary.singlet-v2.csv")
 
 # Species x region combinations excluded after model diagnostics
 # (singular fit, < 20 non-zero cell-years, or dispersion ratio >= 2)
